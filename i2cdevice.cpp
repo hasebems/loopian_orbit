@@ -26,10 +26,10 @@ int   i2cErrCode;
 //---------------------------------------------------------
 void wireBegin( void )
 {
-  Wire.setClock(400000);
   Wire.setSDA(20);
   Wire.setSCL(21);
 	Wire.begin();
+  Wire.setClock(400000);
 }
 //---------------------------------------------------------
 //		Write I2C Device
@@ -537,7 +537,7 @@ int MBR3110_readData( unsigned char cmd, unsigned char* data, int length, unsign
 	while(1) {
 		err = read_nbyte_i2cDevice(i2cAdrs,&wrtBuf,data,1,length);
 		if ( err == 0 ) break;
-		if ( ++cnt > 10 ){	//	if more than 500msec, give up and throw err
+		if ( ++cnt > 10 ){
 			return err;
 		}
 		delay(1);
@@ -592,12 +592,17 @@ int MBR3110_checkWriteConfig( unsigned char checksumL, unsigned char checksumH, 
 {
 	unsigned char data[2];
 	int err;
+  int cnt = 0;
 
-	err = MBR3110_readData(CONFIG_CRC,data,2,crntI2cAdrs);
-	if ( err ){ return err; }
+  while(cnt<100){
+    err = MBR3110_readData(CONFIG_CRC,data,2,crntI2cAdrs);
+    if ( err ){ return err; }
 
-	//	err=0 means it's present config
-	if (( data[0] == checksumL ) && ( data[1] == checksumH )){ return 0; }
+    //	err=0 means it's present config
+    if (( data[0] == checksumL ) && ( data[1] == checksumH )){ return 0; }
+    delay(1);
+    ++cnt;
+  }
 
 	return -1;  //  check sum didn't match
 }
