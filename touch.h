@@ -27,6 +27,7 @@ class SwitchEvent {
   int _sw[MAX_ELECTRODE_PER_DEV];
 public:
   SwitchEvent(void): _sw{OFF} {}
+  int sw(size_t ele) {return _sw[ele];}
   void clear_event(int time, size_t ele);
   bool update_sw_event(uint8_t sw[2], int time);
 };
@@ -57,7 +58,7 @@ struct TouchEvent {
 };
 /*----------------------------------------------------------------------------*/
 void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV]);
-int update_touch_target(void);
+int update_touch_target(SwitchEvent (&se)[MAX_KAMABOKO_NUM]);
 void interporate_location(long difftm);
 void generate_midi(int type, int locate, int last_locate);
 #endif

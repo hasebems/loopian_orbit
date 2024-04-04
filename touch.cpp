@@ -58,7 +58,7 @@ bool SwitchEvent::update_sw_event(uint8_t sw[2], int time) {
 //     calcurate finger location
 /*----------------------------------------------------------------------------*/
 // 連続するタッチオンの検出
-void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV])
+void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent (&se)[MAX_KAMABOKO_NUM])
 {
   bool start=false;
   int start_i = 0;
@@ -70,7 +70,7 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV])
     while (i<MAX_KAMABOKO_NUM*MAX_EACH_SENS) {
       int which_dev=i/MAX_EACH_SENS;
       int each_sw=i%MAX_EACH_SENS;
-      if (sw[which_dev][each_sw] != 0){
+      if (se[which_dev].sw(each_sw) != 0){
         if (!start){
           start = true;
           new_ev[e]._mintch_locate = which_dev*MAX_EACH_SENS + each_sw;
@@ -93,13 +93,13 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV])
     }
   }
 }
-int update_touch_target(void)
+int update_touch_target(SwitchEvent (&se)[MAX_KAMABOKO_NUM])
 {
   int target_num = 0;
   TouchEvent new_ev[MAX_TOUCH_EV];
 
   // 指と判断できるイベント抽出
-  extract_finger(new_ev);
+  extract_finger(new_ev, se);
 
   // ev[]とnew_ev[]を照合して、Note Event を生成
   for (int x=0; x<MAX_TOUCH_EV; x++){
@@ -107,17 +107,17 @@ int update_touch_target(void)
     if (new_target == NOTHING){break;}
     bool found = false;
     for (int y=0; y<MAX_TOUCH_EV; y++){
-      int crnt_target = ev[y]._locate_target;
+      int crnt_target = tchev[y]._locate_target;
       if (crnt_target == NOTHING){break;}
       if (crnt_target == COLLATED){continue;}
       if ((crnt_target-SAME_FINGER < new_target) && (new_target < crnt_target+SAME_FINGER)){
-        new_ev[x]._locate_current = ev[y]._locate_current;
-        new_ev[x]._time = ev[y]._time;
-        ev[y]._locate_target = COLLATED;
+        new_ev[x]._locate_current = tchev[y]._locate_current;
+        new_ev[x]._time = tchev[y]._time;
+        tchev[y]._locate_target = COLLATED;
         found = true;
         new_ev[x]._last_midi = new_ev[x]._locate_target/100;
-        if (new_ev[x]._last_midi != ev[y]._last_midi){
-          generate_midi(1, new_ev[x]._last_midi, ev[y]._last_midi);
+        if (new_ev[x]._last_midi != tchev[y]._last_midi){
+          generate_midi(1, new_ev[x]._last_midi, tchev[y]._last_midi);
         }
         target_num = x;
         break;
@@ -131,13 +131,13 @@ int update_touch_target(void)
     }
   }
   for (int z=0; z<MAX_TOUCH_EV; z++){ // off:new, on:old -> note off
-    int crnt_target = ev[z]._locate_target;
+    int crnt_target = tchev[z]._locate_target;
     if (crnt_target == NOTHING){break;}
     if (crnt_target == COLLATED){continue;}
-    else {generate_midi(2, ev[z]._last_midi, NOTHING);}
+    else {generate_midi(2, tchev[z]._last_midi, NOTHING);}
   }
   // copy
-  memcpy(ev,new_ev,sizeof(TouchEvent)*MAX_TOUCH_EV);
+  memcpy(tchev,new_ev,sizeof(TouchEvent)*MAX_TOUCH_EV);
   //for (int c=0; c<MAX_TOUCH_EV; c++){ev[c] = new_ev[c];}
   return target_num;
 }
@@ -145,17 +145,17 @@ int update_touch_target(void)
 void interporate_location(long difftm)
 {
   for (int i=0; i<MAX_TOUCH_EV; i++){
-    int target = ev[i]._locate_target;
+    int target = tchev[i]._locate_target;
     if (target==-1){break;}
-    int diff = target - ev[i]._locate_current;
+    int diff = target - tchev[i]._locate_current;
     if (diff>0){
       diff = difftm*LED_CHASE_SPEED>diff? diff:difftm*LED_CHASE_SPEED;
     }
     else if (diff<0){
       diff = difftm*LED_CHASE_SPEED>(-diff)? diff:-difftm*LED_CHASE_SPEED;
     }
-    ev[i]._locate_current += diff;
-    ev[i]._time += difftm;
+    tchev[i]._locate_current += diff;
+    tchev[i]._time += difftm;
   }
 }
 void generate_midi(int type, int locate, int last_locate){

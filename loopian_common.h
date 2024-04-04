@@ -20,8 +20,7 @@ void setMidiNoteOff(uint8_t note);
 void setMidiControlChange(uint8_t controller, uint8_t value);
 void setMidiProgramChange(uint8_t pcn , uint8_t chnl );
 
-extern uint16_t sw[MAX_KAMABOKO_NUM][MAX_EACH_SENS];
-extern TouchEvent ev[MAX_TOUCH_EV];
+extern TouchEvent tchev[MAX_TOUCH_EV];
 extern uint8_t velocity;
 
 #endif

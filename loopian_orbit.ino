@@ -52,10 +52,9 @@ unsigned long seconds_old = 0;
 GlobalTimer gt;
 WhiteLed wled;
 bool availableEachDevice[MAX_KAMABOKO_NUM];
-uint16_t sw[MAX_KAMABOKO_NUM][MAX_EACH_SENS] = {0};
 int holdtime_cnt = 0; // 指を離したときの感度を弱めに（反応を遅めに）にするためのカウンタ
 bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
-TouchEvent ev[MAX_TOUCH_EV];
+TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
 uint8_t velocity = 100;
 
@@ -153,14 +152,14 @@ void check_for_normal_mode(void) {
   if (exist_err != 0) {
       gpio_put(LED_ERR,HIGH);
       disp_num = 20 + exist_err; // Error: 19:き, 18:ま,
+      ada88_writeNumber(disp_num);
+      delay(5000);
       if (disp_num >= 23) {
           disp_num = 23;// Er
       }
       else if (disp_num < 0) {
           disp_num = 0;
       }
-      ada88_writeNumber(disp_num);
-      delay(5000);
   } else {
       disp_num = 22; // OK
   }
@@ -300,23 +299,23 @@ void loop() {
     }
     if (light_someone){gpio_put(LED1, HIGH);}
     else {gpio_put(LED1, LOW);}
-    int target_num = update_touch_target();
+    int target_num = update_touch_target(swevt);
     if (target_num>1) {gpio_put(LED2, HIGH);}
     else {gpio_put(LED2,LOW);}
   }
 
   //  update touch location
   interporate_location(difftm);
-  int tchev[MAX_TOUCH_EV];
+  int tchev_copy[MAX_TOUCH_EV];
   for (int i=0; i<MAX_TOUCH_EV; i++){
-    tchev[i] = ev[i]._locate_current;
+    tchev_copy[i] = tchev[i]._locate_current;
   }
 
   // Light White LED
-  int max_ev = wled.gen_lighting_in_loop(difftm, tchev);
+  int max_ev = wled.gen_lighting_in_loop(difftm, tchev_copy);
 
   // Dispay position
-  int position = ev[0]._locate_current;
+  int position = tchev[0]._locate_current;
   if (position < 0){ada88_write(0);}
   else {ada88_writeNumber(position);}
 
