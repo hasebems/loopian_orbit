@@ -45,7 +45,7 @@ MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
 // Init RPI_PICO_Timer
 RPI_PICO_Timer ITimer1(1);
 
-bool setup_mode = false;
+bool normal_mode = true;
 constexpr int HOLD_TIME = 10;  // *10msec この間、一度でもonならonとする。離す時少し鈍感にする。最大16
 int counter = 0;
 unsigned long seconds_old = 0;
@@ -72,13 +72,12 @@ void setup() {
   pinMode(PIN_WHITELED_EN, OUTPUT);
   pinMode(JOYSTICK_SW,INPUT);
 
-  digitalWrite(PIN_WHITELED_EN, LOW);  //  All White LED disable
-  digitalWrite(LED_ERR, LOW);
-  digitalWrite(LED1, LOW);
-  digitalWrite(LED2, LOW);
-  int joystick_sw = digitalRead(JOYSTICK_SW);
-  if (joystick_sw == 0){setup_mode = true;}
-  digitalWrite(LED_BUILTIN, HIGH);
+  gpio_put(PIN_WHITELED_EN, LOW);  //  All White LED disable
+  gpio_put(LED_ERR, LOW);
+  gpio_put(LED1, LOW);
+  gpio_put(LED2, LOW);
+  normal_mode = gpio_get(JOYSTICK_SW);
+  gpio_put(LED_BUILTIN, HIGH);
 
   // Init Vari
   for (int i=0; i<MAX_KAMABOKO_NUM; ++i){
@@ -126,33 +125,33 @@ void setup() {
   }
 
   // check touch sensor & initialize
-  if (setup_mode){check_and_setup_board();}
-  else {normal_mode();}
+  if (normal_mode){check_for_normal_mode();}
+  else {check_and_setup_board();}
 
   wled.clear_all();
-  digitalWrite(PIN_WHITELED_EN, HIGH);  //  All White LED available
+  gpio_put(PIN_WHITELED_EN, HIGH);  //  All White LED available
 }
 /*----------------------------------------------------------------------------*/
-void normal_mode(void) {
+void check_for_normal_mode(void) {
   // Normal Mode
   int exist_err = 0;
   for (int i=0; i<MAX_KAMABOKO_NUM; i++) {
       int ret = MBR3110_init(i);
       if (ret == 0) {
         available_each_device[i] = true;
-        digitalWrite(LED1,HIGH);
+        gpio_put(LED1,HIGH);
         ada88_writeNumber(i * 10);
       }
       else {
         available_each_device[i] = false;
         exist_err = ret;
-        digitalWrite(LED1,LOW);
+        gpio_put(LED1,LOW);
         ada88_write(25); //--
       }
   }
   int disp_num = 0;
   if (exist_err != 0) {
-      digitalWrite(LED_ERR,HIGH);
+      gpio_put(LED_ERR,HIGH);
       disp_num = 20 + exist_err; // Error: 19:き, 18:ま,
       if (disp_num >= 23) {
           disp_num = 23;// Er
@@ -160,6 +159,8 @@ void normal_mode(void) {
       else if (disp_num < 0) {
           disp_num = 0;
       }
+      ada88_writeNumber(disp_num);
+      delay(5000);
   } else {
       disp_num = 22; // OK
   }
@@ -201,7 +202,7 @@ void check_and_setup_board(void) {
       }
       uint16_t cnt = gt.globalTime();
       display_setup(selmode, cnt);
-      if (digitalRead(JOYSTICK_SW) == HIGH) {
+      if (!gpio_get(JOYSTICK_SW)) {
           break;
       }
   }
@@ -211,7 +212,7 @@ void check_and_setup_board(void) {
     ada88_write(24);//"LE"
     delay(200);
     wled.clear_all();
-    digitalWrite(PIN_WHITELED_EN, HIGH);  //  All White LED available
+    gpio_put(PIN_WHITELED_EN, HIGH);  //  All White LED available
     while(1){
       for(int l=0; l<2; l++){
         for(int k=0; k<MAX_KAMABOKO_NUM; k++){
@@ -234,7 +235,7 @@ void check_and_setup_board(void) {
       ada88_write(25); // --
   } else {
       ada88_write(23); // Er
-      digitalWrite(LED_ERR, HIGH); // Err LED on
+      gpio_put(LED_ERR, HIGH); // Err LED on
   }
 
   while(1);
@@ -256,9 +257,9 @@ int setup_mbr(size_t num) {
         // 書き込みしてOKだった場合
         for (int i=0; i<3; ++i) {
             // when finished, flash 3times.
-            digitalWrite(LED_ERR,HIGH);
+            gpio_put(LED_ERR,HIGH);
             delay(100);
-            digitalWrite(LED_ERR,LOW);
+            gpio_put(LED_ERR,LOW);
             delay(100);
         }
         delay(500);
@@ -271,8 +272,8 @@ int setup_mbr(size_t num) {
 void loop() {
   //  Global Timer 
   long difftm = generateTimer();
-  if ((gt.timer100ms()%10)<5){digitalWrite(LED_BUILTIN, LOW);}
-  else {digitalWrite(LED_BUILTIN, HIGH);}
+  if ((gt.timer100ms()%10)<5){gpio_put(LED_BUILTIN, LOW);}
+  else {gpio_put(LED_BUILTIN, HIGH);}
 
   // read any new MIDI messages
   MIDI.read();
@@ -297,11 +298,11 @@ void loop() {
         }
       }
     }
-    if (light_someone){digitalWrite(LED1, HIGH);}
-    else {digitalWrite(LED1, LOW);}
+    if (light_someone){gpio_put(LED1, HIGH);}
+    else {gpio_put(LED1, LOW);}
     int target_num = update_touch_target();
-    if (target_num>1) {digitalWrite(LED2, HIGH);}
-    else {digitalWrite(LED2,LOW);}
+    if (target_num>1) {gpio_put(LED2, HIGH);}
+    else {gpio_put(LED2,LOW);}
   }
 
   //  update touch location
@@ -349,10 +350,10 @@ long generateTimer( void )
 //     MIDI/Other Hardware
 /*----------------------------------------------------------------------------*/
 void handleNoteOn(byte channel, byte pitch, byte velocity) {
-  digitalWrite(LED2, HIGH);
+  gpio_put(LED2, HIGH);
 }
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
-  digitalWrite(LED2, LOW);
+  gpio_put(LED2, LOW);
 }
 void handleProgramChange(byte channel , byte number) {
   //
