@@ -26,10 +26,10 @@ int   i2cErrCode;
 //---------------------------------------------------------
 void wireBegin( void )
 {
+  Wire.setClock(400000);
   Wire.setSDA(20);
   Wire.setSCL(21);
 	Wire.begin();
-  Wire.setClock(400000);
 }
 //---------------------------------------------------------
 //		Write I2C Device
@@ -63,8 +63,9 @@ int read1byte_i2cDevice( unsigned char adrs, unsigned char* wrBuf, unsigned char
 		*rdBuf = Wire.read();
 	}
 
-	err = Wire.endTransmission(true);
-	return err;
+	//err = Wire.endTransmission(true);
+	//return err;
+  return 0;
 }
 //---------------------------------------------------------
 //		Read N byte I2C Device
@@ -91,8 +92,8 @@ int read_nbyte_i2cDevice( unsigned char adrs, unsigned char* wrBuf, unsigned cha
 		*(rdBuf+rdCount-rdAv) = Wire.read();
 	}
 
-	err = Wire.endTransmission(true);
-	return err;
+	//err = Wire.endTransmission(true);
+	//return err;
 
 	return 0;
 }
