@@ -30,6 +30,6 @@ public:
   void clear_all(void);
   int gen_lighting_in_loop(long difftm, int (&tchev)[MAX_TOUCH_EV]);
   void one_kamaboco(int kamanum);
-  void light_led_each(int num, uint16_t count);
+  void light_led_each(const int num, const int dev_num, uint16_t strength);
 };
 #endif

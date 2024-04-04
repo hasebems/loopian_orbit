@@ -537,7 +537,7 @@ int MBR3110_readData( unsigned char cmd, unsigned char* data, int length, unsign
 	while(1) {
 		err = read_nbyte_i2cDevice(i2cAdrs,&wrtBuf,data,1,length);
 		if ( err == 0 ) break;
-		if ( ++cnt > 500 ){	//	if more than 500msec, give up and throw err
+		if ( ++cnt > 10 ){	//	if more than 500msec, give up and throw err
 			return err;
 		}
 		delay(1);

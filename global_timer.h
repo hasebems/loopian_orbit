@@ -14,7 +14,7 @@
  
 #include <Arduino.h>
 
-const int MINIMUM_RESOLUTION = 2; // 2msec
+constexpr int MINIMUM_RESOLUTION = 2; // 2msec
 
 class GlobalTimer {
 

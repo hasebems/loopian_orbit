@@ -43,7 +43,7 @@ Adafruit_USBD_MIDI usb_midi;
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
 
 // Init RPI_PICO_Timer
-RPI_PICO_Timer ITimer(0);
+RPI_PICO_Timer ITimer1(1);
 
 bool setup_mode = false;
 constexpr int HOLD_TIME = 10;  // *10msec この間、一度でもonならonとする。離す時少し鈍感にする。最大16
@@ -71,7 +71,8 @@ void setup() {
   pinMode(LED2, OUTPUT);
   pinMode(PIN_WHITELED_EN, OUTPUT);
   pinMode(JOYSTICK_SW,INPUT);
-  
+
+  digitalWrite(PIN_WHITELED_EN, LOW);  //  All White LED disable
   digitalWrite(LED_ERR, LOW);
   digitalWrite(LED1, LOW);
   digitalWrite(LED2, LOW);
@@ -83,6 +84,22 @@ void setup() {
   for (int i=0; i<MAX_KAMABOKO_NUM; ++i){
     availableEachDevice[i] = true;
   }
+
+  // USB & MIDI
+#if defined(ARDUINO_ARCH_MBED) && defined(ARDUINO_ARCH_RP2040)
+  TinyUSB_Device_Init(0);
+#endif
+
+  MIDI.setHandleNoteOn(handleNoteOn);
+  MIDI.setHandleNoteOff(handleNoteOff);
+  MIDI.setHandleProgramChange(handleProgramChange);
+  usb_midi.setStringDescriptor("TinyUSB MIDI");
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+  MIDI.turnThruOff();
+
+  // wait until device mounted
+  while( !TinyUSBDevice.mounted() ) delay(1);
+
 
   //  I2C/device settings
   wireBegin();   // Join I2C bus
@@ -103,31 +120,17 @@ void setup() {
   delay(500);
 
 
-  // USB & MIDI
-#if defined(ARDUINO_ARCH_MBED) && defined(ARDUINO_ARCH_RP2040)
-  TinyUSB_Device_Init(0);
-#endif
-
-  MIDI.setHandleNoteOn(handleNoteOn);
-  MIDI.setHandleNoteOff(handleNoteOff);
-  MIDI.setHandleProgramChange(handleProgramChange);
-  usb_midi.setStringDescriptor("TinyUSB MIDI");
-  MIDI.begin(MIDI_CHANNEL_OMNI);
-  MIDI.turnThruOff();
-
-  // wait until device mounted
-  while( !TinyUSBDevice.mounted() ) delay(1);
-
   // Interval in unsigned long microseconds
-  if (ITimer.attachInterruptInterval(TIMER_INTERVAL_MS*1000, TimerHandler)) {
+  if (ITimer1.attachInterruptInterval(TIMER_INTERVAL_MS*1000, TimerHandler)) {
     // success
   }
-
-  wled.clear_all();
 
   // check touch sensor & initialize
   if (setup_mode){check_and_setup_board();}
   else {normal_mode();}
+
+  wled.clear_all();
+  digitalWrite(PIN_WHITELED_EN, HIGH);  //  All White LED available
 }
 /*----------------------------------------------------------------------------*/
 void normal_mode(void) {
@@ -138,7 +141,7 @@ void normal_mode(void) {
       if (ret == 0) {
         available_each_device[i] = true;
         digitalWrite(LED1,HIGH);
-        ada88_write(i * 10);
+        ada88_writeNumber(i * 10);
       }
       else {
         available_each_device[i] = false;
@@ -152,9 +155,8 @@ void normal_mode(void) {
       digitalWrite(LED_ERR,HIGH);
       disp_num = 20 + exist_err; // Error: 19:き, 18:ま,
       if (disp_num >= 23) {
-          disp_num = 23;
+          disp_num = 23;// Er
       }
-      // Er
       else if (disp_num < 0) {
           disp_num = 0;
       }
@@ -208,13 +210,15 @@ void check_and_setup_board(void) {
   if (selmode == 12){
     ada88_write(24);//"LE"
     delay(200);
-    for(int f=0; f<MAX_EACH_LIGHT; f++){wled.light_led_each(f,0);}
-    digitalWrite(PIN_WHITELED_EN, LOW);  //  All White LED available
+    wled.clear_all();
+    digitalWrite(PIN_WHITELED_EN, HIGH);  //  All White LED available
     while(1){
       for(int l=0; l<2; l++){
-        for(int e=0; e<MAX_EACH_LIGHT; e++){
-          uint16_t bright = (e%2)==0?l:(l+1)%2;
-          wled.light_led_each(e,bright*200);
+        for(int k=0; k<MAX_KAMABOKO_NUM; k++){
+          for(int e=0; e<MAX_EACH_LIGHT; e++){
+            uint16_t bright = (e%2)==0?l:(l+1)%2;
+            wled.light_led_each(e,k,bright*200);
+          }
         }
         delay(200);
       }
@@ -267,14 +271,14 @@ int setup_mbr(size_t num) {
 void loop() {
   //  Global Timer 
   long difftm = generateTimer();
+  if ((gt.timer100ms()%10)<5){digitalWrite(LED_BUILTIN, LOW);}
+  else {digitalWrite(LED_BUILTIN, HIGH);}
 
   // read any new MIDI messages
   MIDI.read();
 
   if ( gt.timer10msecEvent() ){
     // check active
-    if (gt.timer100ms()%2){digitalWrite(LED_BUILTIN, LOW);}
-    else {digitalWrite(LED_BUILTIN, HIGH);}
     holdtime_cnt += 1;
     if (holdtime_cnt>=HOLD_TIME){holdtime_cnt=0;}
 
@@ -293,8 +297,8 @@ void loop() {
         }
       }
     }
-    if (light_someone){digitalWrite(LED1, LOW);}
-    else {digitalWrite(LED1, HIGH);}
+    if (light_someone){digitalWrite(LED1, HIGH);}
+    else {digitalWrite(LED1, LOW);}
     int target_num = update_touch_target();
     if (target_num>1) {digitalWrite(LED2, HIGH);}
     else {digitalWrite(LED2,LOW);}
@@ -316,7 +320,11 @@ void loop() {
   else {ada88_writeNumber(position);}
 
   // Read Joystick
-  velocity = get_velocity_from_adc();
+  uint8_t new_vel = get_velocity_from_adc();
+  if (new_vel != velocity) {
+    ada88_writeNumber(new_vel);
+    velocity = new_vel;
+  }
 }
 /*----------------------------------------------------------------------------*/
 //     Timer
@@ -341,10 +349,10 @@ long generateTimer( void )
 //     MIDI/Other Hardware
 /*----------------------------------------------------------------------------*/
 void handleNoteOn(byte channel, byte pitch, byte velocity) {
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED2, HIGH);
 }
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED2, LOW);
 }
 void handleProgramChange(byte channel , byte number) {
   //

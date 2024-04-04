@@ -18,11 +18,9 @@
 void WhiteLed::clear_all(void)
 {
   for (int j=0; j<MAX_KAMABOKO_NUM; j++){
-    //pca9544_changeI2cBus(3,j);
     for (int i=0; i<MAX_EACH_LIGHT; i++){
-      light_led_each(i, 0);
+      light_led_each(i, j, 0);
     }
-    //pca9544_changeI2cBus(1,j);
   }
 }
 int WhiteLed::gen_lighting_in_loop(long difftm, int (&tchev)[MAX_TOUCH_EV])
@@ -59,7 +57,6 @@ void WhiteLed::one_kamaboco(int kamanum)
 {
   uint16_t time = static_cast<uint16_t>(_total_time/5);
   const int offset_num = kamanum*MAX_EACH_LIGHT;
-  //pca9544_changeI2cBus(3,kamanum);
 
   for (int i=0; i<MAX_EACH_LIGHT; i++){
     int x = i+offset_num;
@@ -69,23 +66,23 @@ void WhiteLed::one_kamaboco(int kamanum)
         // だんだん暗くなるとき
         _light_lvl_itp[x] = (_light_lvl_itp[x]-_light_lvl[x])*3/4 + _light_lvl[x];
       }
-      light_led_each(i, _light_lvl_itp[x]*20);
+      light_led_each(i, kamanum, _light_lvl_itp[x]*20);
     }
     else {
       // 背景で薄く光っている
       int ptn = (time+(4*i))%64;
       ptn = ptn<32? ptn:64-ptn;
-      light_led_each(i, ptn);
+      light_led_each(i, kamanum, ptn);
     }
   }
   //pca9544_changeI2cBus(1,kamanum); // 別のI2Cバスに変えないと、他のkamanumのときに上書きされてしまう
 }
-void WhiteLed::light_led_each(const int num, uint16_t strength){ // strength=0-4095
+void WhiteLed::light_led_each(const int num, const int dev_num, uint16_t strength){ // strength=0-4095
   int err;
   uint8_t adrs = num * 4 + 0x06;
   if (strength > 4000){strength = 4000;}
-	err = PCA9685_write( 0, adrs, 0 );          // ONはtime=0
-	err = PCA9685_write( 0, adrs+1, 0 );        // ONはtime=0
-	err = PCA9685_write( 0, adrs+2, (uint8_t)(strength & 0x00ff) );// OFF 0-4095 (0-0x0fff) の下位8bit
-	err = PCA9685_write( 0, adrs+3, (uint8_t)(strength>>8) );      // OFF 上位4bit
+	err = PCA9685_write( dev_num+16, adrs, 0 );          // ONはtime=0
+	err = PCA9685_write( dev_num+16, adrs+1, 0 );        // ONはtime=0
+	err = PCA9685_write( dev_num+16, adrs+2, (uint8_t)(strength & 0x00ff) );// OFF 0-4095 (0-0x0fff) の下位8bit
+	err = PCA9685_write( dev_num+16, adrs+3, (uint8_t)(strength>>8) );      // OFF 上位4bit
 }
