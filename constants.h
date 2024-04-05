@@ -16,6 +16,7 @@
 #define   MAX_EACH_SENS         8
 
 constexpr size_t MAX_NOTE = 96; // 1system が取りうる最大 Note 番号
+constexpr int MAX_LOCATE = MAX_NOTE*100;
 
 #define USE_CY8CMBR3110
 #define USE_ADA88

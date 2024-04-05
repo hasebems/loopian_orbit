@@ -51,7 +51,6 @@ int counter = 0;
 unsigned long seconds_old = 0;
 GlobalTimer gt;
 WhiteLed wled;
-bool availableEachDevice[MAX_KAMABOKO_NUM];
 int holdtime_cnt = 0; // 指を離したときの感度を弱めに（反応を遅めに）にするためのカウンタ
 bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
@@ -77,11 +76,6 @@ void setup() {
   gpio_put(LED2, LOW);
   normal_mode = gpio_get(JOYSTICK_SW);
   gpio_put(LED_BUILTIN, HIGH);
-
-  // Init Vari
-  for (int i=0; i<MAX_KAMABOKO_NUM; ++i){
-    availableEachDevice[i] = true;
-  }
 
   // USB & MIDI
 #if defined(ARDUINO_ARCH_MBED) && defined(ARDUINO_ARCH_RP2040)
@@ -286,7 +280,7 @@ void loop() {
     int errNum = 0;
     bool light_someone = false;
     for (int i=0; i<MAX_KAMABOKO_NUM; ++i){
-      if (availableEachDevice[i] == true){
+      if (available_each_device[i] == true){
         uint8_t swtmp[2] = {0};
         int err = MBR3110_readTouchSw(swtmp,i);
         if (err){
@@ -315,9 +309,9 @@ void loop() {
   int max_ev = wled.gen_lighting_in_loop(difftm, tchev_copy);
 
   // Dispay position
-  int position = tchev[0]._locate_current;
+  int position = tchev[0]._locate_target;
   if (position < 0){ada88_write(0);}
-  else {ada88_writeNumber(position);}
+  else {ada88_writeNumber(position/10);}
 
   // Read Joystick
   uint8_t new_vel = get_velocity_from_adc();

@@ -62,6 +62,7 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent (&se)[MAX_KA
 {
   bool start=false;
   int start_i = 0;
+  constexpr int MAKE_POSITION = MAX_LOCATE / (MAX_KAMABOKO_NUM*MAX_EACH_SENS*2);
 
   // new_ev の生成
   for (int e=0; e<MAX_TOUCH_EV; e++){
@@ -80,7 +81,7 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent (&se)[MAX_KA
         if (start){
           start = false;
           new_ev[e]._maxtch_locate = which_dev*MAX_EACH_SENS + each_sw - 1;
-          new_ev[e]._locate_target = (new_ev[e]._mintch_locate + new_ev[e]._maxtch_locate)*100; // *200/2
+          new_ev[e]._locate_target = (new_ev[e]._mintch_locate + new_ev[e]._maxtch_locate)*MAKE_POSITION;
           start_i = i+1;
           break;
         }
@@ -89,7 +90,7 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent (&se)[MAX_KA
     }
     if (start){ // 最後のセンサ
       new_ev[e]._maxtch_locate = MAX_KAMABOKO_NUM*MAX_EACH_SENS - 1;
-      new_ev[e]._locate_target = (new_ev[e]._mintch_locate + new_ev[e]._maxtch_locate)*100; // *200/2
+      new_ev[e]._locate_target = (new_ev[e]._mintch_locate + new_ev[e]._maxtch_locate)*MAKE_POSITION;
     }
   }
 }

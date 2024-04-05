@@ -30,14 +30,16 @@ int WhiteLed::gen_lighting_in_loop(long difftm, int (&tchev)[MAX_TOUCH_EV])
   if (_fade_counter > FADE_RATE){_fade_counter = 0;}
 
   //for (int x=0; x<MAX_EACH_LIGHT*MAX_KAMABOKO_NUM; x++){_light_lvl[x]=0;}
+  // 0クリア
   memset(&_light_lvl[0], 0, sizeof(int)*MAX_EACH_LIGHT*MAX_KAMABOKO_NUM);
 
   // tchev : 0-1599 + 1600*kamanum で絶対位置が表現され、イベントごとにその数値が入力される
   int max_ev = 0;
+  constexpr int MAKE_FRAC = MAX_LOCATE / (MAX_EACH_LIGHT*MAX_KAMABOKO_NUM);
   for (int i=0; i<MAX_TOUCH_EV; i++){
     if (tchev[i] == -1){break;}
-    int frac = tchev[i]%100;
-    int pos = tchev[i]/100;
+    int frac = tchev[i]%MAKE_FRAC;
+    int pos = tchev[i]/MAKE_FRAC;
     for (int j=0; j<2; j++){
       //  触った箇所の前後二つのLEDが点灯する
       _light_lvl[pos+1+j] += (frac+100)>j*100? (frac+100)-j*100: 0;    // 199 - 0
