@@ -41,6 +41,7 @@ Adafruit_USBD_MIDI usb_midi;
 // Create a new instance of the Arduino MIDI Library,
 // and attach usb_midi as the transport.
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI_U);
 
 // Init RPI_PICO_Timer
 RPI_PICO_Timer ITimer1(1);
@@ -174,9 +175,9 @@ void check_and_setup_board(void) {
   while(1) {
       uint16_t adval = get_joystick_position_x();
       int incdec = 0;
-      if (adval > 3000) {
+      if (adval > 750) {
           incdec = 1;
-      } else if (adval < 1000) {
+      } else if (adval < 250) {
           incdec = -1;
       }
       if (incdec != incdec_old) {
@@ -277,7 +278,7 @@ void loop() {
     if (holdtime_cnt>=HOLD_TIME){holdtime_cnt=0;}
 
     //  Touch Sensor
-    int errNum = 0;
+    uint16_t errNum = 0;
     bool light_someone = false;
     for (int i=0; i<MAX_KAMABOKO_NUM; ++i){
       if (available_each_device[i] == true){
@@ -296,6 +297,9 @@ void loop() {
     int target_num = update_touch_target(swevt);
     if (target_num>1) {gpio_put(LED2, HIGH);}
     else {gpio_put(LED2,LOW);}
+    if (errNum) {
+      gpio_put(LED_ERR, HIGH);
+    }
   }
 
   //  update touch location
@@ -353,15 +357,15 @@ void handleProgramChange(byte channel , byte number) {
 }
 /*----------------------------------------------------------------------------*/
 uint8_t get_velocity_from_adc(void) {
-    // adc: 0-4095
-    uint16_t adc = get_joystick_position_x();
+    // get_joystick_position_x(): 0-1023 左が値が大きい
+    uint16_t adc = 1023 - get_joystick_position_x();
     uint8_t ret;
-    if (adc > 2100) {
-        ret = (adc / 70) + 69;
-    } else if (adc < 1900) {
-        ret = (adc / 25) + 20;
+    if (adc > 525) {
+        ret = (adc / 18) + 69;
+    } else if (adc < 475) {
+        ret = (adc / 6) + 20;
     } else {
-        ret = 98;
+        ret = 100;
     }
     return ret;
 }
