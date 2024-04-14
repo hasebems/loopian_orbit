@@ -47,6 +47,7 @@ MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI_U);
 RPI_PICO_Timer ITimer1(1);
 
 bool normal_mode = true;
+bool play_mode = true;  // false: command_mode
 constexpr int HOLD_TIME = 10;  // *10msec この間、一度でもonならonとする。離す時少し鈍感にする。最大16
 int counter = 0;
 unsigned long seconds_old = 0;
@@ -234,8 +235,8 @@ void check_and_setup_board(void) {
 
   while(1);
 }
-void display_setup(int sup, uint16_t counter) {
-    if ((counter % 400) > 200) {
+void display_setup(int sup, uint16_t cnt) {
+    if ((cnt % 400) > 200) {
         if (sup < 12) {
             ada88_writeNumber(sup * 10);
         } else {
@@ -272,7 +273,10 @@ void loop() {
   // read any new MIDI messages
   MIDI.read();
 
-  if ( gt.timer10msecEvent() ){
+  // mode check
+  check_if_play_mode();
+
+  if (gt.timer10msecEvent() && play_mode){
     // check active
     holdtime_cnt += 1;
     if (holdtime_cnt>=HOLD_TIME){holdtime_cnt=0;}
@@ -313,15 +317,82 @@ void loop() {
   int max_ev = wled.gen_lighting_in_loop(difftm, tchev_copy);
 
   // Dispay position
-  int position = tchev[0]._locate_target;
-  if (position < 0){ada88_write(0);}
-  else {ada88_writeNumber(position/10);}
+  display_88matrix();
 
   // Read Joystick
   uint8_t new_vel = get_velocity_from_adc();
-  if (new_vel != velocity) {
+  if ((new_vel != velocity) && play_mode) {
     ada88_writeNumber(new_vel);
     velocity = new_vel;
+  }
+}
+/*----------------------------------------------------------------------------*/
+bool stk_jsw = true;
+long pushed_time = 0;
+int command_mode_incdec_old = 0;
+int command_mode_com = 0;
+
+void check_if_play_mode(void) {
+  bool jsw = gpio_get(JOYSTICK_SW);
+  if (jsw!=stk_jsw) {
+    if (!jsw) {
+      pushed_time = gt.globalTime();
+    } else {
+      long diff = gt.globalTime() - pushed_time;
+      if (diff > 2500) {
+        play_mode = false;
+        gpio_put(LED2, HIGH);
+      } else {
+        if (!play_mode){
+          setMidiProgramChange(command_mode_com);
+        }
+        play_mode = true;
+        gpio_put(LED2, LOW);
+      }
+      pushed_time = 0;
+    }
+    stk_jsw = jsw;
+  }
+}
+void display_88matrix(void) {
+  const int COMMODE_MAX = 18;
+  if (play_mode) {
+    int position = tchev[0]._locate_target;
+    if (position < 0){ada88_write(0);}
+    else {ada88_writeNumber(position/10);}
+  } else {
+    uint16_t adval = get_joystick_position_x();
+    int incdec = 0;
+    if (adval > 750) {
+        incdec = 1;
+    } else if (adval < 250) {
+        incdec = -1;
+    }
+    if (incdec != command_mode_incdec_old) {
+        if (incdec > 0) {
+            command_mode_com += 1;
+            if (command_mode_com >= COMMODE_MAX) {
+                command_mode_com = 0;
+            }
+        } else if (incdec < 0) {
+            command_mode_com -= 1;
+            if (command_mode_com < 0) {
+                command_mode_com = COMMODE_MAX - 1;
+            }
+        }
+        command_mode_incdec_old = incdec;
+    }
+    if ((gt.globalTime() % 400) > 200) {
+        if (command_mode_com < COMMODE_MAX-2) {
+            ada88_writeNumber(command_mode_com * 10);
+        } else if (command_mode_com == COMMODE_MAX-2) {
+            ada88_write(5); // "E"
+        } else if (command_mode_com == COMMODE_MAX-1) {
+            ada88_write(3); // "C"
+        }
+    } else {
+        ada88_write(0);
+    }
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -378,20 +449,20 @@ uint16_t get_joystick_position_x(void) {
 /*----------------------------------------------------------------------------*/
 void setMidiNoteOn(uint8_t note, uint8_t vel)
 {
-  MIDI.sendNoteOn(note, vel, 1);
+  MIDI.sendNoteOn(note, vel, 12);
 }
 /*----------------------------------------------------------------------------*/
 void setMidiNoteOff(uint8_t note)
 {
-  MIDI.sendNoteOff(note, 64, 1);
+  MIDI.sendNoteOff(note, 64, 12);
 }
 /*----------------------------------------------------------------------------*/
 void setMidiControlChange(uint8_t controller, uint8_t value)
 {
-  MIDI.sendControlChange(controller, value, 1);
+  MIDI.sendControlChange(controller, value, 12);
 }
 /*----------------------------------------------------------------------------*/
-void setMidiProgramChange(uint8_t pcn , uint8_t chnl )
+void setMidiProgramChange(uint8_t pcn)
 {
-  MIDI.sendProgramChange(pcn, chnl);
+  MIDI.sendProgramChange(pcn, 12);
 }
