@@ -37,8 +37,8 @@ void initHardware( void );
 
 
 // USE_PCA9685
-	void PCA9685_init( int chipNumber );
-  int PCA9685_write( int chipNumber, uint8_t cmd1, uint8_t cmd2 );
-	int PCA9685_setFullColorLED( int chipNumber, int ledNum, unsigned short* color  );
+	void PCA9685_init( uint8_t chipNumber );
+  int PCA9685_write( uint8_t chipNumber, uint8_t cmd1, uint8_t cmd2 );
+	int PCA9685_setFullColorLED( uint8_t chipNumber, int ledNum, unsigned short* color  );
 
 #endif

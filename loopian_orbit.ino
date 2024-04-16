@@ -41,23 +41,23 @@ Adafruit_USBD_MIDI usb_midi;
 // Create a new instance of the Arduino MIDI Library,
 // and attach usb_midi as the transport.
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI_U);
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI_S);
 
 // Init RPI_PICO_Timer
 RPI_PICO_Timer ITimer1(1);
 
 bool normal_mode = true;
 bool play_mode = true;  // false: command_mode
-constexpr int HOLD_TIME = 10;  // *10msec この間、一度でもonならonとする。離す時少し鈍感にする。最大16
-int counter = 0;
 unsigned long seconds_old = 0;
-GlobalTimer gt;
-WhiteLed wled;
 int holdtime_cnt = 0; // 指を離したときの感度を弱めに（反応を遅めに）にするためのカウンタ
+uint8_t velocity = 100;
 bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
-uint8_t velocity = 100;
+int externalNoteState[128];
+
+GlobalTimer gt;
+WhiteLed wled;
 
 /*----------------------------------------------------------------------------*/
 //     setup
@@ -97,8 +97,8 @@ void setup() {
 
   //  I2C/device settings
   wireBegin();   // Join I2C bus
-  for (int k=0; k<MAX_KAMABOKO_NUM; k++){
-    PCA9685_init(16+k);
+  for (uint8_t k=0; k<MAX_KAMABOKO_NUM; k++){
+    PCA9685_init(k + PCA9685_OFSADRS);
   }
   ada88_init();
   // Opening
@@ -146,23 +146,25 @@ void check_for_normal_mode(void) {
   }
   int disp_num = 0;
   if (exist_err != 0) {
-      gpio_put(LED_ERR,HIGH);
-      disp_num = 20 + exist_err; // Error: 19:き, 18:ま,
-      ada88_writeNumber(disp_num);
-      delay(5000);
-      if (disp_num >= 23) {
-          disp_num = 23;// Er
-      }
-      else if (disp_num < 0) {
-          disp_num = 0;
-      }
+    gpio_put(LED_ERR,HIGH);
+    disp_num = 20 + exist_err; // Error: 19:き, 18:ま,
+    ada88_writeNumber(disp_num);
+    delay(5000);
+    if (disp_num >= 23) {
+        disp_num = 23;// Er
+    }
+    else if (disp_num < 0) {
+        disp_num = 0;
+    }
+    ada88_write(disp_num);
+    delay(2000);
+    ada88_write_org_bit(available_each_device); // どのKAMABOKOがOKか？
+    delay(2000);
   } else {
-      disp_num = 22; // OK
+    disp_num = 22; // OK
+    ada88_write(disp_num);
+    delay(2000);
   }
-  ada88_write(disp_num);
-  delay(2000);
-  ada88_write_org_bit(available_each_device);
-  delay(2000);
 }
 /*----------------------------------------------------------------------------*/
 void check_and_setup_board(void) {
@@ -269,6 +271,7 @@ void loop() {
   long difftm = generateTimer();
   if ((gt.timer100ms()%10)<5){gpio_put(LED_BUILTIN, LOW);}
   else {gpio_put(LED_BUILTIN, HIGH);}
+  //ada88_writeNumber(difftm); // Loop周期の計測
 
   // read any new MIDI messages
   MIDI.read();
@@ -314,7 +317,7 @@ void loop() {
   }
 
   // Light White LED
-  int max_ev = wled.gen_lighting_in_loop(difftm, tchev_copy);
+  int max_ev = wled.gen_lighting_in_loop(difftm, tchev_copy, externalNoteState);
 
   // Dispay position
   display_88matrix();
@@ -418,10 +421,16 @@ long generateTimer( void )
 //     MIDI/Other Hardware
 /*----------------------------------------------------------------------------*/
 void handleNoteOn(byte channel, byte pitch, byte velocity) {
-  gpio_put(LED2, HIGH);
+  if (channel == 16){
+    externalNoteState[pitch] = velocity;
+    gpio_put(LED2, HIGH);
+  }
 }
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
-  gpio_put(LED2, LOW);
+  if (channel == 16){
+    externalNoteState[pitch] = 0;
+    gpio_put(LED2, LOW);
+  }
 }
 void handleProgramChange(byte channel , byte number) {
   //

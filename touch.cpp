@@ -112,6 +112,7 @@ int update_touch_target(SwitchEvent (&se)[MAX_KAMABOKO_NUM])
       if (crnt_target == NOTHING){break;}
       if (crnt_target == COLLATED){continue;}
       if ((crnt_target-SAME_FINGER < new_target) && (new_target < crnt_target+SAME_FINGER)){
+        // 過去と現在のあるデータを同じ指とみなす
         new_ev[x]._locate_current = tchev[y]._locate_current;
         new_ev[x]._time = tchev[y]._time;
         tchev[y]._locate_target = COLLATED;
@@ -124,14 +125,14 @@ int update_touch_target(SwitchEvent (&se)[MAX_KAMABOKO_NUM])
         break;
       }
     }
-    if (!found){ // on:new, off:old -> note on
+    if (!found){ // off:old, on:new -> note on
       new_ev[x]._locate_current = new_target;
       new_ev[x]._time = 0;
       new_ev[x]._last_midi = new_ev[x]._locate_current/100;
       generate_midi(0, new_ev[x]._last_midi, NOTHING);
     }
   }
-  for (int z=0; z<MAX_TOUCH_EV; z++){ // off:new, on:old -> note off
+  for (int z=0; z<MAX_TOUCH_EV; z++){ // on:old, off:new -> note off
     int crnt_target = tchev[z]._locate_target;
     if (crnt_target == NOTHING){break;}
     if (crnt_target == COLLATED){continue;}

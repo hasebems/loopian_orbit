@@ -962,20 +962,19 @@ void ada88_write_org_bit(bool* bit) {
 //			PCA9685 (LED Driver : I2c Device)
 //-------------------------------------------------------------------------
 #ifdef USE_PCA9685    //	for LED Driver
+constexpr unsigned char PCA9685_ADDRESS = 0x40;
 //-------------------------------------------------------------------------
-int PCA9685_write( int chipNumber, uint8_t cmd1, uint8_t cmd2 )
+int PCA9685_write( uint8_t chipNumber, uint8_t cmd1, uint8_t cmd2 )
 {
-	static const unsigned char PCA9685_ADDRESS = 0x40;
 	unsigned char	i2cBuf[2];
-	int		err = 0;
 	i2cBuf[0] = cmd1; i2cBuf[1] = cmd2;
-	err = write_i2cDevice( PCA9685_ADDRESS+chipNumber, i2cBuf, 2 );
+	int err = write_i2cDevice( PCA9685_ADDRESS+chipNumber, i2cBuf, 2 );
 	return err;
 }
 //-------------------------------------------------------------------------
 //		Initialize
 //-------------------------------------------------------------------------
-void PCA9685_init( int chipNumber )
+void PCA9685_init( uint8_t chipNumber )
 {
 	//	Init Parameter
 	PCA9685_write( chipNumber, 0x00, 0x00 );
@@ -984,7 +983,7 @@ void PCA9685_init( int chipNumber )
 //-------------------------------------------------------------------------
 //		rNum, gNum, bNum : 0 - 4094  bigger, brighter
 //-------------------------------------------------------------------------
-int PCA9685_setFullColorLED( int chipNumber, int ledNum, unsigned short* color  )
+int PCA9685_setFullColorLED( uint8_t chipNumber, int ledNum, unsigned short* color  )
 {
   int err = 0;
 	int	i;
