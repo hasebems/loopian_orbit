@@ -21,6 +21,6 @@ void setMidiControlChange(uint8_t controller, uint8_t value);
 void setMidiProgramChange(uint8_t pcn , uint8_t chnl );
 
 extern TouchEvent tchev[MAX_TOUCH_EV];
-extern uint8_t velocity;
+extern uint8_t velocity_byjoy;
 
 #endif

@@ -50,7 +50,7 @@ bool normal_mode = true;
 bool play_mode = true;  // false: command_mode
 unsigned long seconds_old = 0;
 int holdtime_cnt = 0; // 指を離したときの感度を弱めに（反応を遅めに）にするためのカウンタ
-uint8_t velocity = 100;
+uint8_t velocity_byjoy = 100;
 bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
@@ -324,9 +324,9 @@ void loop() {
 
   // Read Joystick
   uint8_t new_vel = get_velocity_from_adc();
-  if ((new_vel != velocity) && play_mode) {
+  if ((new_vel != velocity_byjoy) && play_mode) {
     ada88_writeNumber(new_vel);
-    velocity = new_vel;
+    velocity_byjoy = new_vel;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -342,7 +342,7 @@ void check_if_play_mode(void) {
       pushed_time = gt.globalTime();
     } else {
       long diff = gt.globalTime() - pushed_time;
-      if (diff > 2500) {
+      if (diff > JSTICK_LONG_HOLD_TIME) {
         play_mode = false;
         gpio_put(LED2, HIGH);
       } else {
@@ -423,13 +423,11 @@ long generateTimer( void )
 void handleNoteOn(byte channel, byte pitch, byte velocity) {
   if (channel == 16){
     externalNoteState[pitch] = velocity;
-    gpio_put(LED2, HIGH);
   }
 }
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
   if (channel == 16){
     externalNoteState[pitch] = 0;
-    gpio_put(LED2, LOW);
   }
 }
 void handleProgramChange(byte channel , byte number) {

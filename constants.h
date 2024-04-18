@@ -23,6 +23,8 @@ constexpr int MAX_LIGHT = MAX_EACH_LIGHT*MAX_KAMABOKO_NUM;
 constexpr int HOLD_TIME = 10;  // *10msec この間、一度でもonならonとする。離す時少し鈍感にする。最大16
 constexpr long UPDATE_TIME = 25; // White LED の背景放射の更新時間 *2[msec]
 
+constexpr long JSTICK_LONG_HOLD_TIME = 150; // 曲選択モードにするために JoyStick を長押しする時間 x/50[sec]
+
 //  MIDI Note Number
 constexpr int KEYBD_LO = 21; // A0
 constexpr int KEYBD_C1 = 24;
