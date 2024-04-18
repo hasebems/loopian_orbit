@@ -16,15 +16,20 @@
 
 constexpr int NOTHING = -1;
 constexpr int COLLATED = -2;  // 照合済
-constexpr size_t MAX_ELECTRODE_PER_DEV = 8;
 
+enum NOTE_TYP {
+  TYP_NOTE_ON,
+  TYP_SLIDE,
+  TYP_NOTE_OFF,
+  TYP_MAX,
+};
 /*----------------------------------------------------------------------------*/
 //     Struct
 /*----------------------------------------------------------------------------*/
 constexpr int OFF = 0;
 constexpr int CHATTERING_TIME = 50; //msec
 class SwitchEvent {
-  int _sw[MAX_ELECTRODE_PER_DEV];
+  int _sw[MAX_EACH_SENS];
 public:
   SwitchEvent(void): _sw{OFF} {}
   int sw(size_t ele) {return _sw[ele];}
@@ -60,5 +65,5 @@ struct TouchEvent {
 void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV]);
 int update_touch_target(SwitchEvent (&se)[MAX_KAMABOKO_NUM]);
 void interporate_location(long difftm);
-void generate_midi(int type, int locate, int last_locate);
+void generate_midi(NOTE_TYP type, int locate, int last_locate);
 #endif
