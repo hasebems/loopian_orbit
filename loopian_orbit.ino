@@ -57,6 +57,8 @@ bool play_mode = true;  // false: command_mode
 unsigned long seconds_old = 0;
 int holdtime_cnt = 0; // 指を離したときの感度を弱めに（反応を遅めに）にするためのカウンタ
 uint8_t velocity_byjoy = 100;
+uint8_t damper_byjoy = 0;
+int disp_auto_clear = 0;
 bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
@@ -106,6 +108,7 @@ void setup() {
 #ifdef UART_MIDI
   MIDI_UART.setHandleNoteOn(handleNoteOn_UART);
   MIDI_UART.setHandleNoteOff(handleNoteOff_UART);
+  MIDI_UART.setHandleControlChange(handleControlChange_UART);
   MIDI_UART.setHandleProgramChange(handleProgramChange_UART);
   MIDI_UART.begin(MIDI_CHANNEL_OMNI);
   MIDI_UART.turnThruOff();
@@ -126,7 +129,7 @@ void setup() {
       ada88_write(28 - i);
       delay(300);
   }
-  ada88_writeNumber(109); // version No. 一の位は9固定
+  ada88_writeNumber(119); // version No. 一の位は9固定
   delay(500);
 
 
@@ -258,6 +261,7 @@ void display_setup(int sup, uint16_t cnt) {
         ada88_write(0);
     }
 }
+/*----------------------------------------------------------------------------*/
 int setup_mbr(size_t num) {
     int v = MBR3110_setup(num);
     if (v == 0) {
@@ -281,7 +285,10 @@ void loop() {
   long difftm = generateTimer();
   if ((gt.timer100ms()%10)<5){gpio_put(LED_BUILTIN, LOW);}
   else {gpio_put(LED_BUILTIN, HIGH);}
-  //ada88_writeNumber(difftm); // Loop周期の計測
+  //ada88_writeNumber(difftm); // Loop周期の計測（パフォーマンス測定時に使用）
+
+  // Display auto clear 
+  display_auto_clear();
 
   // read any new MIDI messages
   if (orbit_main) {MIDI.read();}
@@ -339,7 +346,15 @@ void loop() {
   uint8_t new_vel = get_velocity_from_adc();
   if ((new_vel != velocity_byjoy) && play_mode) {
     ada88_writeNumber(new_vel);
+    disp_auto_clear = 5;
     velocity_byjoy = new_vel;
+  }
+  uint8_t new_dmp = get_damper_from_adc();
+  if ((new_dmp != damper_byjoy) && play_mode) {
+    ada88_writeNumber(new_dmp);
+    setMidiControlChange(64, new_dmp);
+    disp_auto_clear = 5;
+    damper_byjoy = new_dmp;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -347,7 +362,7 @@ bool stk_jsw = true;
 long pushed_time = 0;
 int command_mode_incdec_old = 0;
 int command_mode_com = 0;
-
+/*----------------------------------------------------------------------------*/
 void check_if_play_mode(void) {
   bool jsw = gpio_get(JOYSTICK_SW);
   if (jsw!=stk_jsw) {
@@ -370,12 +385,26 @@ void check_if_play_mode(void) {
     stk_jsw = jsw;
   }
 }
+/*----------------------------------------------------------------------------*/
+void display_auto_clear(void) {
+  if (gt.timer100msecEvent() && play_mode) {
+    if (disp_auto_clear > 0){
+      disp_auto_clear -= 1;
+      if (disp_auto_clear == 0){
+        ada88_write(0);
+      }
+    }
+  }
+}
+/*----------------------------------------------------------------------------*/
 void display_88matrix(void) {
   const int COMMODE_MAX = 18;
   if (play_mode) {
     int position = tchev[0]._locate_target;
-    if (position < 0){ada88_write(0);}
-    else {ada88_writeNumber(position/10);}
+    if (position >= 0){
+      ada88_writeNumber(position/10);
+      disp_auto_clear = 0;
+    }
   } else {
     uint16_t adval = get_joystick_position_x();
     int incdec = 0;
@@ -410,6 +439,47 @@ void display_88matrix(void) {
         ada88_write(0);
     }
   }
+}
+/*----------------------------------------------------------------------------*/
+uint8_t get_velocity_from_adc(void) {
+    // get_joystick_position_x(): 0-1023 左が値が大きい
+    uint16_t adc = 1023 - get_joystick_position_x();
+    uint8_t ret;
+    if (adc > 525) {
+        ret = (adc / 18) + 69;
+    } else if (adc < 475) {
+        ret = (adc / 6) + 20;
+    } else {
+        ret = 100;
+    }
+    return ret;
+}
+/*----------------------------------------------------------------------------*/
+uint8_t get_damper_from_adc(void) {
+    // get_joystick_position_y(): 0-1023 左が値が大きい
+    uint16_t adc = get_joystick_position_y();
+    uint8_t ret;
+    if (adc > 545) {
+        ret = (adc / 3) - 182;
+    } else if (adc < 480) {
+        ret = 160 - (adc / 3);
+    } else {
+        ret = 0;
+    }
+    if (ret > 127){ret=127;}
+    return ret;
+}
+/*----------------------------------------------------------------------------*/
+uint16_t get_joystick_position_x(void) {
+    // 0-1023
+    uint16_t pin_adx_value = analogRead(JOYSTICK_X);
+    return pin_adx_value;
+}
+/*----------------------------------------------------------------------------*/
+uint16_t get_joystick_position_y(void) {
+    // 0-1023
+    uint16_t pin_ady_value = analogRead(JOYSTICK_Y);
+    return pin_ady_value;
 }
 /*----------------------------------------------------------------------------*/
 //     Timer
@@ -485,32 +555,19 @@ void handleNoteOff_UART(byte channel, byte pitch, byte velocity) {
     externalNoteState[pitch] = 0;
   }
 }
+void handleControlChange_UART(byte channel , byte number , byte value ) {
+  if (orbit_main) {
+    if (channel == 13){
+      MIDI.sendControlChange(number, value, 13); // to server
+    }
+  }  
+}
 void handleProgramChange_UART(byte channel , byte number) {
   if (orbit_main) {
     if (channel == 13){
       MIDI.sendProgramChange(number, channel); // to server
     }
   }
-}
-/*----------------------------------------------------------------------------*/
-uint8_t get_velocity_from_adc(void) {
-    // get_joystick_position_x(): 0-1023 左が値が大きい
-    uint16_t adc = 1023 - get_joystick_position_x();
-    uint8_t ret;
-    if (adc > 525) {
-        ret = (adc / 18) + 69;
-    } else if (adc < 475) {
-        ret = (adc / 6) + 20;
-    } else {
-        ret = 100;
-    }
-    return ret;
-}
-/*----------------------------------------------------------------------------*/
-uint16_t get_joystick_position_x(void) {
-    // 0-4095
-    uint16_t pin_adx_value = analogRead(JOYSTICK_X);
-    return pin_adx_value;
 }
 /*----------------------------------------------------------------------------*/
 void setMidiNoteOn(uint8_t note, uint8_t vel)
@@ -522,7 +579,6 @@ void setMidiNoteOn(uint8_t note, uint8_t vel)
 #endif
   }
 }
-/*----------------------------------------------------------------------------*/
 void setMidiNoteOff(uint8_t note)
 {
   if (orbit_main) {MIDI.sendNoteOff(note, 64, 12);}
@@ -532,7 +588,6 @@ void setMidiNoteOff(uint8_t note)
 #endif
   }
 }
-/*----------------------------------------------------------------------------*/
 void setMidiControlChange(uint8_t controller, uint8_t value)
 {
   if (orbit_main) {MIDI.sendControlChange(controller, value, 12);}
@@ -542,7 +597,6 @@ void setMidiControlChange(uint8_t controller, uint8_t value)
 #endif
   }
 }
-/*----------------------------------------------------------------------------*/
 void setMidiProgramChange(uint8_t pcn)
 {
   if (orbit_main) {MIDI.sendProgramChange(pcn, 12);}
