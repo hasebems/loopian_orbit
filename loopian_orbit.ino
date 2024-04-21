@@ -178,6 +178,7 @@ void check_for_normal_mode(void) {
     ada88_write(22); // OK
     delay(2000);
   }
+  ada88_write(0);
 }
 /*----------------------------------------------------------------------------*/
 void check_and_setup_board(void) {
@@ -403,7 +404,7 @@ void display_88matrix(void) {
     int position = tchev[0]._locate_target;
     if (position >= 0){
       ada88_writeNumber(position/10);
-      disp_auto_clear = 0;
+      disp_auto_clear = 1;
     }
   } else {
     uint16_t adval = get_joystick_position_x();
