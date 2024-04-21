@@ -46,6 +46,7 @@ Adafruit_USBD_MIDI usb_midi;
 // and attach usb_midi as the transport.
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI_UART);
+#define UART_MIDI
 
 // Init RPI_PICO_Timer
 RPI_PICO_Timer ITimer1(1);
@@ -84,7 +85,7 @@ void setup() {
   gpio_put(LED2, LOW);
   gpio_put(LED_BUILTIN, HIGH);
   normal_mode = gpio_get(JOYSTICK_SW);
-  orbit_main = !gpio_get(SW4);
+  orbit_main = gpio_get(SW4);
 
   // USB & MIDI
   if (orbit_main) {
@@ -102,11 +103,13 @@ void setup() {
     // wait until device mounted
     while( !TinyUSBDevice.mounted() ) delay(1);
   }
+#ifdef UART_MIDI
   MIDI_UART.setHandleNoteOn(handleNoteOn_UART);
   MIDI_UART.setHandleNoteOff(handleNoteOff_UART);
   MIDI_UART.setHandleProgramChange(handleProgramChange_UART);
   MIDI_UART.begin(MIDI_CHANNEL_OMNI);
   MIDI_UART.turnThruOff();
+#endif
 
   //  I2C/device settings
   wireBegin();   // Join I2C bus
@@ -143,7 +146,7 @@ void setup() {
 /*----------------------------------------------------------------------------*/
 void check_for_normal_mode(void) {
   // Normal Mode
-  int exist_err = 0;
+  int errnum = 0;
   for (int i=0; i<MAX_KAMABOKO_NUM; i++) {
     int ret = MBR3110_init(i);
     if (ret == 0) {
@@ -152,30 +155,24 @@ void check_for_normal_mode(void) {
     }
     else {
       available_each_device[i] = false;
-      exist_err = ret;
       ada88_write(25); //--
+      errnum = ret;
+      // ada88_writeNumber(ret + 20);// Error: 19:き, 18:ま,
+      // break;
     }
     delay(200);
   }
   int disp_num = 0;
-  if (exist_err != 0) {
-    gpio_put(LED_ERR,HIGH);
-    disp_num = 20 + exist_err; // Error: 19:き, 18:ま,
-    ada88_writeNumber(disp_num);
-    delay(5000);
-    if (disp_num >= 23) {
-        disp_num = 23;// Er
+  if (errnum != 0) {
+    gpio_put(LED_ERR,HIGH); // Err LED 点灯
+    for (int i=0; i<3; i++){
+      ada88_write(23); // Er
+      delay(500);
+      ada88_write_org_bit(available_each_device); // どのKAMABOKOがOKか？
+      delay(500);
     }
-    else if (disp_num < 0) {
-        disp_num = 0;
-    }
-    ada88_write(disp_num);
-    delay(2000);
-    ada88_write_org_bit(available_each_device); // どのKAMABOKOがOKか？
-    delay(2000);
   } else {
-    disp_num = 22; // OK
-    ada88_write(disp_num);
+    ada88_write(22); // OK
     delay(2000);
   }
 }
@@ -288,7 +285,9 @@ void loop() {
 
   // read any new MIDI messages
   if (orbit_main) {MIDI.read();}
+#ifdef UART_MIDI
   MIDI_UART.read();
+#endif
 
   // mode check
   check_if_play_mode();
@@ -435,11 +434,15 @@ long generateTimer( void )
 //     MIDI/Other Hardware
 /*----------------------------------------------------------------------------*/
 void handleNoteOn(byte channel, byte pitch, byte velocity) { // orbit_main
-  if ((channel == 16) || (channel == 14)){
+  if (channel == 16){
     externalNoteState[pitch] = velocity;
+#ifdef UART_MIDI
     MIDI_UART.sendNoteOn(pitch, velocity, 16); // to orbit_sub
+#endif
   } else if (channel == 15) {
+#ifdef UART_MIDI
     MIDI_UART.sendNoteOn(pitch, velocity, 15); // to orbit_sub
+#endif
   } else if (channel == 14) {
     externalNoteState[pitch] = velocity;
   }
@@ -447,9 +450,13 @@ void handleNoteOn(byte channel, byte pitch, byte velocity) { // orbit_main
 void handleNoteOff(byte channel, byte pitch, byte velocity) { // orbit_main
   if (channel == 16){
     externalNoteState[pitch] = 0;
+#ifdef UART_MIDI
     MIDI_UART.sendNoteOff(pitch, velocity, 16); // to orbit_sub
+#endif
   } else if (channel == 15) {
+#ifdef UART_MIDI
     MIDI_UART.sendNoteOff(pitch, velocity, 15); // to orbit_sub
+#endif
   } else if (channel == 14) {
     externalNoteState[pitch] = 0; 
   }
@@ -463,10 +470,9 @@ void handleNoteOn_UART(byte channel, byte pitch, byte velocity) {
     if (channel == 13){
       MIDI.sendNoteOn(pitch, velocity, channel); // to server
     }
-  } else {
-    if (channel == 16){
-      externalNoteState[pitch] = velocity;
-    }
+  } else if ((channel == 15) || (channel == 16)) {
+    // from main
+    externalNoteState[pitch] = velocity;
   }
 }
 void handleNoteOff_UART(byte channel, byte pitch, byte velocity) {
@@ -474,10 +480,9 @@ void handleNoteOff_UART(byte channel, byte pitch, byte velocity) {
     if (channel == 13){
       MIDI.sendNoteOff(pitch, velocity, channel); // to server
     }
-  } else {
-    if (channel == 16){
-      externalNoteState[pitch] = 0;
-    }
+  } else if ((channel == 15) || (channel = 16)) {
+    // from main
+    externalNoteState[pitch] = 0;
   }
 }
 void handleProgramChange_UART(byte channel , byte number) {
@@ -511,23 +516,39 @@ uint16_t get_joystick_position_x(void) {
 void setMidiNoteOn(uint8_t note, uint8_t vel)
 {
   if (orbit_main) {MIDI.sendNoteOn(note, vel, 12);}
-  else {MIDI_UART.sendNoteOn(note, vel, 13);}
+  else {
+#ifdef UART_MIDI
+    MIDI_UART.sendNoteOn(note, vel, 13);
+#endif
+  }
 }
 /*----------------------------------------------------------------------------*/
 void setMidiNoteOff(uint8_t note)
 {
   if (orbit_main) {MIDI.sendNoteOff(note, 64, 12);}
-  else {MIDI_UART.sendNoteOff(note, 64, 13);}
+  else {
+#ifdef UART_MIDI
+    MIDI_UART.sendNoteOff(note, 64, 13);
+#endif
+  }
 }
 /*----------------------------------------------------------------------------*/
 void setMidiControlChange(uint8_t controller, uint8_t value)
 {
   if (orbit_main) {MIDI.sendControlChange(controller, value, 12);}
-  else {MIDI_UART.sendControlChange(controller, value, 13);}
+  else {
+#ifdef UART_MIDI
+    MIDI_UART.sendControlChange(controller, value, 13);
+#endif
+  }
 }
 /*----------------------------------------------------------------------------*/
 void setMidiProgramChange(uint8_t pcn)
 {
   if (orbit_main) {MIDI.sendProgramChange(pcn, 12);}
-  else {MIDI_UART.sendProgramChange(pcn, 13);}
+  else {
+#ifdef UART_MIDI
+    MIDI_UART.sendProgramChange(pcn, 13);
+#endif
+  }
 }
