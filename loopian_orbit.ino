@@ -62,7 +62,7 @@ int disp_auto_clear = 0;
 bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
-int externalNoteState[128];
+int externalNoteState[MAX_MIDI_NOTE] = {0};
 
 GlobalTimer gt;
 WhiteLed wled;
@@ -129,7 +129,7 @@ void setup() {
       ada88_write(28 - i);
       delay(300);
   }
-  ada88_writeNumber(119); // version No. 一の位は9固定
+  ada88_writeNumber(129); // version No. ex) 129 => ver.1.2 (一の位は9固定)
   delay(500);
 
 
@@ -229,7 +229,7 @@ void check_and_setup_board(void) {
         for(int k=0; k<MAX_KAMABOKO_NUM; k++){
           for(int e=0; e<MAX_EACH_LIGHT; e++){
             uint16_t bright = (e%2)==0?l:(l+1)%2;
-            wled.light_led_each(e,k,bright*200);
+            wled.set_led(k, e, bright*200);
           }
         }
         delay(200);
@@ -339,6 +339,7 @@ void loop() {
 
   // Light White LED
   int max_ev = wled.gen_lighting_in_loop(difftm, tchev_copy, externalNoteState);
+  wled.lighten_led();
 
   // Dispay position
   display_88matrix();
@@ -368,8 +369,11 @@ void check_if_play_mode(void) {
   bool jsw = gpio_get(JOYSTICK_SW);
   if (jsw!=stk_jsw) {
     if (!jsw) {
+      // スイッチが押された時
       pushed_time = gt.globalTime();
+      clear_external_note();
     } else {
+      // スイッチが離された時
       long diff = gt.globalTime() - pushed_time;
       if (diff > JSTICK_LONG_HOLD_TIME) {
         play_mode = false;
@@ -404,7 +408,7 @@ void display_88matrix(void) {
     int position = tchev[0]._locate_target;
     if (position >= 0){
       ada88_writeNumber(position/10);
-      disp_auto_clear = 1;
+      disp_auto_clear = 2;
     }
   } else {
     uint16_t adval = get_joystick_position_x();
@@ -482,6 +486,13 @@ uint16_t get_joystick_position_y(void) {
     uint16_t pin_ady_value = analogRead(JOYSTICK_Y);
     return pin_ady_value;
 }
+/*----------------------------------------------------------------------------*/
+void clear_external_note(void) {
+  for (int i=0; i<MAX_MIDI_NOTE; ++i) {
+    externalNoteState[i] = 0;
+  }
+}
+
 /*----------------------------------------------------------------------------*/
 //     Timer
 /*----------------------------------------------------------------------------*/

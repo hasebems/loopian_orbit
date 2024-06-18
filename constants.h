@@ -12,7 +12,7 @@
 #define CONSTANTS_H
 
 constexpr int MAX_KAMABOKO_NUM = 12;
-constexpr int MAX_TOUCH_EV = 8;
+constexpr int MAX_TOUCH_EV = 6;
 constexpr int MAX_EACH_SENS = 8;
 
 constexpr size_t MAX_NOTE = 96; // 1system が取りうる最大 Note 番号
@@ -29,6 +29,7 @@ constexpr long JSTICK_LONG_HOLD_TIME = 150; // 曲選択モードにするため
 constexpr int KEYBD_LO = 21; // A0
 constexpr int KEYBD_C1 = 24;
 constexpr int KEYBD_HI = 108; // C8
+constexpr int MAX_MIDI_NOTE = 128;
 
 //  Hardware
 constexpr uint8_t PCA9685_OFSADRS = 16;
