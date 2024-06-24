@@ -345,19 +345,7 @@ void loop() {
   display_88matrix();
 
   // Read Joystick
-  uint8_t new_vel = get_velocity_from_adc();
-  if ((new_vel != velocity_byjoy) && play_mode) {
-    ada88_writeNumber(new_vel);
-    disp_auto_clear = 5;
-    velocity_byjoy = new_vel;
-  }
-  uint8_t new_dmp = get_damper_from_adc();
-  if ((new_dmp != damper_byjoy) && play_mode) {
-    ada88_writeNumber(new_dmp);
-    setMidiControlChange(64, new_dmp);
-    disp_auto_clear = 5;
-    damper_byjoy = new_dmp;
-  }
+  joy_stick();
 }
 /*----------------------------------------------------------------------------*/
 bool stk_jsw = true;
@@ -367,27 +355,35 @@ int command_mode_com = 0;
 /*----------------------------------------------------------------------------*/
 void check_if_play_mode(void) {
   bool jsw = gpio_get(JOYSTICK_SW);
-  if (jsw!=stk_jsw) {
+  if (jsw!=stk_jsw) { // false:on, true:off
     if (!jsw) {
-      // スイッチが押された時
-      pushed_time = gt.globalTime();
+      // スイッチが押された時 : いろいろリセット
+      gpio_put(LED_ERR, LOW); // とりあえず Err LED を消去
       clear_external_note();
+      for (int i=0; i<MAX_KAMABOKO_NUM; i++) { // センサをリセット
+        int ret = MBR3110_init(i);
+      }
+      pushed_time = gt.globalTime();
+      if (!play_mode){
+        setMidiProgramChange(command_mode_com);
+        play_mode = true;
+      }
     } else {
       // スイッチが離された時
-      long diff = gt.globalTime() - pushed_time;
-      if (diff > JSTICK_LONG_HOLD_TIME) {
-        play_mode = false;
-        gpio_put(LED2, HIGH);
-      } else {
-        if (!play_mode){
-          setMidiProgramChange(command_mode_com);
-        }
-        play_mode = true;
+      if (play_mode){
+        // 時間が足りなかったので元に戻す
         gpio_put(LED2, LOW);
       }
-      pushed_time = 0;
     }
     stk_jsw = jsw;
+  } else if (!jsw && play_mode) {
+    // スイッチが押されている間
+    long diff = gt.globalTime() - pushed_time;
+    if (diff > JSTICK_LONG_HOLD_TIME) {
+      play_mode = false;
+      gpio_put(LED2, HIGH);
+      setMidiProgramChange(0);
+    }
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -446,14 +442,30 @@ void display_88matrix(void) {
   }
 }
 /*----------------------------------------------------------------------------*/
+void joy_stick(void) {
+  uint8_t new_vel = get_velocity_from_adc();
+  if ((new_vel != velocity_byjoy) && play_mode) {
+    ada88_writeNumber(new_vel);
+    disp_auto_clear = 5;
+    velocity_byjoy = new_vel;
+  }
+  uint8_t new_dmp = get_damper_from_adc();
+  if ((new_dmp != damper_byjoy) && play_mode) {
+    ada88_writeNumber(new_dmp);
+    setMidiControlChange(64, new_dmp);
+    disp_auto_clear = 5;
+    damper_byjoy = new_dmp;
+  }
+}
+/*----------------------------------------------------------------------------*/
 uint8_t get_velocity_from_adc(void) {
     // get_joystick_position_x(): 0-1023 左が値が大きい
     uint16_t adc = 1023 - get_joystick_position_x();
     uint8_t ret;
-    if (adc > 525) {
+    if (adc > 525) {  // bigger
         ret = (adc / 18) + 69;
-    } else if (adc < 475) {
-        ret = (adc / 6) + 20;
+    } else if (adc < 450) { // smaller
+        ret = (adc / 8) + 40;
     } else {
         ret = 100;
     }
@@ -488,6 +500,12 @@ uint16_t get_joystick_position_y(void) {
 }
 /*----------------------------------------------------------------------------*/
 void clear_external_note(void) {
+  for (int i=0; i<MAX_MIDI_NOTE; ++i) {
+    externalNoteState[i] = 0;
+  }
+}
+/*----------------------------------------------------------------------------*/
+void clear_my_note(void) {
   for (int i=0; i<MAX_MIDI_NOTE; ++i) {
     externalNoteState[i] = 0;
   }
