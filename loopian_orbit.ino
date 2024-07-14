@@ -129,7 +129,7 @@ void setup() {
       ada88_write(28 - i);
       delay(300);
   }
-  ada88_writeNumber(129); // version No. ex) 129 => ver.1.2 (一の位は9固定)
+  ada88_writeNumber(139); // version No. ex) 129 => ver.1.2 (一の位は9固定)
   delay(500);
 
 
@@ -288,9 +288,6 @@ void loop() {
   else {gpio_put(LED_BUILTIN, HIGH);}
   //ada88_writeNumber(difftm); // Loop周期の計測（パフォーマンス測定時に使用）
 
-  // Display auto clear 
-  display_auto_clear();
-
   // read any new MIDI messages
   if (orbit_main) {MIDI.read();}
 #ifdef UART_MIDI
@@ -341,7 +338,7 @@ void loop() {
   int max_ev = wled.gen_lighting_in_loop(difftm, tchev_copy, externalNoteState);
   wled.lighten_led();
 
-  // Dispay position
+  // Display position
   display_88matrix();
 
   // Read Joystick
@@ -367,6 +364,7 @@ void check_if_play_mode(void) {
       if (!play_mode){
         setMidiProgramChange(command_mode_com);
         play_mode = true;
+        ada88_write(0); // 表示を消す
       }
     } else {
       // スイッチが離された時
@@ -399,10 +397,14 @@ void display_auto_clear(void) {
 }
 /*----------------------------------------------------------------------------*/
 void display_88matrix(void) {
+  // Display auto clear 
+  display_auto_clear();
+
   const int COMMODE_MAX = 18;
   if (play_mode) {
     int position = tchev[0]._locate_target;
     if (position >= 0){
+      // 通常の表示モード
       ada88_writeNumber(position/10);
       disp_auto_clear = 2;
     }
