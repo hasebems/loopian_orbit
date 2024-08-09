@@ -34,7 +34,7 @@ void initHardware( void );
   void ada88_write_5param(uint8_t prm1, uint8_t prm2, uint8_t prm3, uint8_t prm4, uint8_t prm5);
   void ada88_write_bit(uint16_t num);
   void ada88_write_org_bit(bool* bit);
-
+  void ada88_anime( int time );
 
 // USE_PCA9685
 	void PCA9685_init( uint8_t chipNumber );

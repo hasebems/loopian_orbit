@@ -59,6 +59,7 @@ int holdtime_cnt = 0; // 指を離したときの感度を弱めに（反応を�
 uint8_t velocity_byjoy = 100;
 uint8_t damper_byjoy = 0;
 int disp_auto_clear = 0;
+int disp_notch_counter = 0;
 bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
@@ -387,10 +388,12 @@ void check_if_play_mode(void) {
 /*----------------------------------------------------------------------------*/
 void display_auto_clear(void) {
   if (gt.timer100msecEvent() && play_mode) {
+    disp_notch_counter += 1;
     if (disp_auto_clear > 0){
       disp_auto_clear -= 1;
       if (disp_auto_clear == 0){
-        ada88_write(0);
+        //ada88_write(0);
+        disp_notch_counter = 0;
       }
     }
   }
@@ -402,13 +405,18 @@ void display_88matrix(void) {
 
   const int COMMODE_MAX = 18;
   if (play_mode) {
+    // 通常の表示モード
     int position = tchev[0]._locate_target;
     if (position >= 0){
-      // 通常の表示モード
+      // Touchされているとき
       ada88_writeNumber(position/10);
       disp_auto_clear = 2;
+      disp_notch_counter = 0;
+    } else {
+      ada88_anime(disp_notch_counter/2); // Time per one frame: 200msec
     }
   } else {
+    // Joystick長押しで設定モード
     uint16_t adval = get_joystick_position_x();
     int incdec = 0;
     if (adval > 750) {
