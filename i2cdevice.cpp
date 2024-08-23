@@ -97,6 +97,26 @@ int read_nbyte_i2cDevice( unsigned char adrs, unsigned char* wrBuf, unsigned cha
 
 	return 0;
 }
+// ハングしてはいけない本番用
+int read_nbyte_i2cDeviceX( unsigned char adrs, unsigned char* wrBuf, unsigned char* rdBuf, int wrCount, int rdCount )
+{
+	unsigned char err;
+  volatile int cnt=0;
+
+	Wire.beginTransmission(adrs);
+  Wire.write(wrBuf,wrCount);
+	err = Wire.endTransmission(false);
+	if ( err != 0 ){ return err; }
+
+	err = Wire.requestFrom(adrs,static_cast<uint8_t>(rdCount),(uint8_t)0);
+	int rdAv = 0;
+	while(((rdAv = Wire.available()) != 0) && (cnt < 10)){
+		*(rdBuf+rdCount-rdAv) = Wire.read();
+    cnt += 1;
+	}
+
+	return 0;
+}
 //---------------------------------------------------------
 //    Read Only N byte I2C Device
 //    Err Code
@@ -536,7 +556,7 @@ int MBR3110_readData( unsigned char cmd, unsigned char* data, int length, unsign
 	unsigned char wrtBuf = cmd;
 
 	while(1) {
-		err = read_nbyte_i2cDevice(i2cAdrs,&wrtBuf,data,1,length);
+		err = read_nbyte_i2cDeviceX(i2cAdrs,&wrtBuf,data,1,length);
 		if ( err == 0 ) break;
 		if ( ++cnt > 10 ){
 			return err;
