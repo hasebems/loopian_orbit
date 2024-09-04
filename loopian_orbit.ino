@@ -130,7 +130,8 @@ void setup() {
       ada88_write(28 - i);
       delay(300);
   }
-  ada88_writeNumber(139); // version No. ex) 129 => ver.1.2 (一の位は9固定)
+  // version No. ex) 129 => ver.1.2 (一の位は9固定)
+  ada88_writeNumber(ORBIT_VERSION*10+9);
   delay(500);
 
 

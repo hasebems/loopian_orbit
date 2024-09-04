@@ -11,8 +11,9 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+constexpr int ORBIT_VERSION = 15;
+constexpr int MAX_TOUCH_EV = 4;
 constexpr int MAX_KAMABOKO_NUM = 12;
-constexpr int MAX_TOUCH_EV = 6;
 constexpr int MAX_EACH_SENS = 8;
 
 constexpr size_t MAX_NOTE = 96; // 1system が取りうる最大 Note 番号
