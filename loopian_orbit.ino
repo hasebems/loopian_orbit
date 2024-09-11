@@ -21,6 +21,7 @@
 #include  "white_led.h"
 #include  "touch.h"
 
+//#define UART_MIDI
 /*----------------------------------------------------------------------------*/
 //     Constants
 /*----------------------------------------------------------------------------*/
@@ -45,8 +46,9 @@ Adafruit_USBD_MIDI usb_midi;
 // Create a new instance of the Arduino MIDI Library,
 // and attach usb_midi as the transport.
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
+#ifdef UART_MIDI
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI_UART);
-#define UART_MIDI
+#endif
 
 // Init RPI_PICO_Timer
 RPI_PICO_Timer ITimer1(1);
