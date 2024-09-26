@@ -68,6 +68,7 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent (&se)[MAX_KA
   bool start=false;
 
   //  下から上まで端子の状態を走査しながら、タッチされた端子が連続している箇所を探す
+  //  MAX_TOUCH_EV 以上になったら走査終了
   while (locate < MAX_KAMABOKO_NUM*MAX_EACH_SENS) {
     int which_dev = locate/MAX_EACH_SENS;
     int each_sw = locate%MAX_EACH_SENS;
@@ -76,13 +77,14 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent (&se)[MAX_KA
       if (!start){
         start = true;
         new_ev[fng_num]._mintch_locate = which_dev*MAX_EACH_SENS + each_sw;
-        }
+      }
     } else if (start){
       start = false;
       new_ev[fng_num]._maxtch_locate = which_dev*MAX_EACH_SENS + each_sw - 1;
       new_ev[fng_num]._locate_target = 
           (new_ev[fng_num]._mintch_locate + new_ev[fng_num]._maxtch_locate) * MAKE_POSITION;
-      fng_num += 1;
+      if (fng_num < MAX_TOUCH_EV) {fng_num += 1;}
+      else {break;}
     }
     locate += 1;
   }
