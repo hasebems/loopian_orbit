@@ -19,7 +19,7 @@
 //     Constants
 /*----------------------------------------------------------------------------*/
 constexpr int LED_CHASE_SPEED = 10; // locate diff / 2msec
-constexpr int SAME_FINGER = 210;  // 100 means next value (200means next sensor)/10msec
+constexpr int SAME_FINGER = 410;  // 100 means next value (200means next sensor)/10msec
                                   // 同じ指とみなす速さ
 
 /*----------------------------------------------------------------------------*/
@@ -29,7 +29,9 @@ void SwitchEvent::clear_event(int time, size_t ele) {
     if (_sw[ele] == OFF) {
         return;
     }
-    if (_sw[ele] + CHATTERING_TIME < time) {
+    uint32_t time32 = time;
+    if (_sw[ele] > time) { time32 += 0x10000;}
+    if (_sw[ele] + CHATTERING_TIME < time32) {
         _sw[ele] = OFF;
     }
 }
