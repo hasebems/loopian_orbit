@@ -66,6 +66,7 @@ bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
 int externalNoteState[MAX_MIDI_NOTE] = {0};
+int loop_counter = 0;
 
 GlobalTimer gt;
 WhiteLed wled;
@@ -286,6 +287,8 @@ int setup_mbr(size_t num) {
 //     loop
 /*----------------------------------------------------------------------------*/
 void loop() {
+  loop_counter += 1;
+
   //  Global Timer 
   long difftm = generateTimer();
   if ((gt.timer100ms()%10)<5){gpio_put(LED_BUILTIN, LOW);}
@@ -316,9 +319,13 @@ void loop() {
         if (err){
           errNum += 0x01<<i;
         }
-        else {
-          light_someone |= swevt[i].update_sw_event(swtmp, gt.timer10ms()*10);
-        }
+        //else {
+          //バグ出し用にメチャメチャに押したイベント生成
+          //uint16_t sw = 0x0003<<(loopCounter%9);
+          //swtmp[1] = static_cast<uint8_t>(sw >> 8);
+          //swtmp[0] = static_cast<uint8_t>(sw & 0xfff0);
+        light_someone |= swevt[i].update_sw_event(swtmp, gt.timer10ms()*10);
+        //}
       }
     }
     if (light_someone){gpio_put(LED1, HIGH);}
@@ -326,9 +333,8 @@ void loop() {
     int target_num = update_touch_target(swevt);
     if (target_num>1) {gpio_put(LED2, HIGH);}
     else {gpio_put(LED2,LOW);}
-    if (errNum) {
-      gpio_put(LED_ERR, HIGH);
-    }
+    if (errNum) {gpio_put(LED_ERR, HIGH);}
+    else {gpio_put(LED_ERR, LOW);}
   }
 
   //  update touch location
