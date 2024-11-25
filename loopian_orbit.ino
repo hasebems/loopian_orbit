@@ -324,7 +324,7 @@ void loop() {
           //uint16_t sw = 0x0003<<(loopCounter%9);
           //swtmp[1] = static_cast<uint8_t>(sw >> 8);
           //swtmp[0] = static_cast<uint8_t>(sw & 0xfff0);
-        light_someone |= swevt[i].update_sw_event(swtmp, gt.timer10ms()*10);
+        light_someone |= swevt[i].update_sw_event(swtmp, static_cast<int>(gt.timer10ms())*10);
         //}
       }
     }

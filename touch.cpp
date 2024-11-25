@@ -25,16 +25,23 @@ constexpr int SAME_FINGER = 410;  // 100 means next value (200means next sensor)
 /*----------------------------------------------------------------------------*/
 //     SwitchEvent Class
 /*----------------------------------------------------------------------------*/
+/// @brief イベントをクリア
+/// @param time
+/// @param ele
 void SwitchEvent::clear_event(int time, size_t ele) {
-    if (_sw[ele] == OFF) {
+    if (_eachSw[ele]._sw == OFF) {
         return;
     }
     uint32_t time32 = time;
-    if (_sw[ele] > time) { time32 += 0x10000;}
-    if (_sw[ele] + CHATTERING_TIME < time32) {
-        _sw[ele] = OFF;
+    if (_eachSw[ele]._sw > time) { time32 += 0x10000;}
+    if (_eachSw[ele]._sw + CHATTERING_TIME < time32) {
+        _eachSw[ele]._sw = OFF;
     }
 }
+/// @brief かまぼこ筐体一個あたりのスイッチの状態を更新
+/// @param sw[2] [0]:下位, [1]:上位
+/// @param time [msec]
+/// @return どこか一つでも ON なら true
 bool SwitchEvent::update_sw_event(uint8_t sw[2], int time) {
     if (time == 0) {
         return false;
@@ -44,15 +51,46 @@ bool SwitchEvent::update_sw_event(uint8_t sw[2], int time) {
     uint16_t swl = static_cast<uint16_t>(sw[0]);
     uint16_t bptn = (swh << 8) + swl;
     for (int j=0; j<MAX_EACH_SENS; ++j) {
-        if ((bptn & (0x0001 << j)) != 0) {
-            if (_sw[j] == OFF) {
-                _sw[j] = time;
-            }
-            light_someone = true;
-        } else {
-            clear_event(time, j);
+      uint16_t eachPtn = 0x0001 << j;
+      if ((bptn & eachPtn) != 0) {
+        // Error Check
+        if (_eachSw[j]._timeWhenOn == HOLD_ERROR) {
+          continue;
         }
+
+        if (_eachSw[j]._sw == OFF) {
+          _eachSw[j]._sw = time;
+        }
+        light_someone = true;
+        if ((_oldSwEvent & eachPtn) == 0) {
+          // SW ON Event 
+          _eachSw[j]._timeWhenOn = time;
+        }
+
+        // Sensor Error で、SW ON が続いている場合 
+        int diff = time - _eachSw[j]._timeWhenOn;
+        if (_eachSw[j]._timeWhenOn > time) {
+          diff = 0x10000 + time - _eachSw[j]._timeWhenOn;
+        }
+        if (diff > 10*1000) { // 10sec 以上 SW ON ならばエラー扱いとする
+          _eachSw[j]._timeWhenOn = HOLD_ERROR;
+          _eachSw[j]._sw = OFF;
+        }
+
+      } else {
+        // Error Check
+        if (_eachSw[j]._timeWhenOn == HOLD_ERROR) {
+          _eachSw[j]._timeWhenOn = NO_TOUCH;
+        }
+
+        if ((_oldSwEvent & eachPtn) != 0) {
+          // SW OFF Event 検出
+          _eachSw[j]._timeWhenOn = NO_TOUCH;
+        }
+        clear_event(time, j);
+      }
     }
+    _oldSwEvent = bptn;
     return light_someone;
 }
 
@@ -75,7 +113,7 @@ void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent (&se)[MAX_KA
     int which_dev = locate/MAX_EACH_SENS;
     int each_sw = locate%MAX_EACH_SENS;
 
-    if (se[which_dev].sw(each_sw) != 0){
+    if (se[which_dev].sw(each_sw) != OFF){
       if (!start){
         start = true;
         new_ev[fng_num]._mintch_locate = which_dev*MAX_EACH_SENS + each_sw;

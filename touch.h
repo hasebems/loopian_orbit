@@ -27,12 +27,25 @@ enum NOTE_TYP {
 //     Struct
 /*----------------------------------------------------------------------------*/
 constexpr int OFF = 0;
+constexpr int NO_TOUCH = -1;
+constexpr int HOLD_ERROR = -2;
 constexpr int CHATTERING_TIME = 50; //msec
-class SwitchEvent {
-  int _sw[MAX_EACH_SENS];
+class EachSwitch {
 public:
-  SwitchEvent(void): _sw{OFF} {}
-  int sw(size_t ele) {return _sw[ele];}
+  int _sw;
+  int _timeWhenOn;
+  EachSwitch(void): _sw(OFF), _timeWhenOn(NO_TOUCH) {}
+};
+class SwitchEvent {
+  EachSwitch _eachSw[MAX_EACH_SENS];
+  //int      _sw[MAX_EACH_SENS];
+  //int      _timeWhenOn[MAX_EACH_SENS];
+  //uint16_t _oldSwEvent[MAX_EACH_SENS];
+  uint16_t _oldSwEvent;
+public:
+  SwitchEvent(void): _eachSw(), _oldSwEvent(0) {}
+  int sw(size_t ele) {return _eachSw[ele]._sw;}
+  bool sw_on(size_t ele) {return _eachSw[ele]._timeWhenOn >= 0;}
   void clear_event(int time, size_t ele);
   bool update_sw_event(uint8_t sw[2], int time);
 };
