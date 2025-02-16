@@ -25,6 +25,7 @@ void initHardware( void );
   int MBR3110_readTouchSw( unsigned char* touchSw, int number=0 );
   int MBR3110_checkWriteConfig( unsigned char checksumL, unsigned char checksumH, unsigned char crntI2cAdrs );
   int MBR3110_writeConfig( int number, unsigned char crntI2cAdrs );
+  int mbr3110_read_rawdata( unsigned int number, unsigned char (&read_data)[2] );
 
 // USE_ADA88
 	void ada88_init( void );

@@ -27,8 +27,8 @@ int   i2cErrCode;
 void wireBegin( void )
 {
   Wire.setClock(400000);
-  Wire.setSDA(20);
-  Wire.setSCL(21);
+  Wire.setSDA(6);
+  Wire.setSCL(7);
 	Wire.begin();
 }
 //---------------------------------------------------------
@@ -174,6 +174,10 @@ int read_only_nbyte_i2cDevice( unsigned char adrs, unsigned char* rdBuf, int rdC
 #define		SNS_VDD_SHORT			    0x9a	//	Register Address
 #define		SNS_GND_SHORT			    0x9c	//	Register Address
 #define		BUTTON_STAT				    0xaa	//	Register Address
+
+#define  SENSOR_ID              0x82  //  Register Address
+#define  DEBUG_SENSOR_ID        0xdc  //  Register Address
+#define  DEBUG_RAW_COUNT        0xe2  //  Register Address
 
 static const unsigned char CAP_SENSE_ADDRESS_ORG = 0x37;  //  Factory-Set
 static const unsigned char CAP_SENSE_ADDRESS_1 = 0x38;
@@ -700,6 +704,21 @@ int MBR3110_writeConfig( int number, unsigned char crntI2cAdrs )
 	}
 	
 	return 0;
+}
+//---------------------------------------------------------
+int mbr3110_read_rawdata( unsigned int number, unsigned char (&read_data)[2] )
+{
+	unsigned char	data[2];
+  data[0] = SENSOR_ID;
+	data[1] = number;
+  int err = write_i2cDevice(tI2cAdrs[number],data,2);
+	if ( err != 0 ){ return err;}
+
+	unsigned char wrtData = DEBUG_RAW_COUNT;
+  err =  read_nbyte_i2cDevice(tI2cAdrs[number],&wrtData,read_data,1,2);
+	if ( err != 0 ){ return err; }
+
+  return 0;
 }
 #endif
 
