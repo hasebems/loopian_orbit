@@ -36,8 +36,10 @@ constexpr int MAX_MIDI_NOTE = 128;
 //  Hardware
 constexpr uint8_t PCA9685_OFSADRS = 16;
 
+//#define UART_MIDI
 #define USE_CY8CMBR3110
 #define USE_ADA88
 #define USE_PCA9685
+#define USE_AQM1602A
 
 #endif

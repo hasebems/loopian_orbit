@@ -13,6 +13,8 @@
 #include <Adafruit_TinyUSB.h>
 #include <MIDI.h>
 #include <Adafruit_NeoPixel.h>
+#include <cstdlib>
+
 // Can be included as many times as necessary, without `Multiple Definitions` Linker Error
 #include "RPi_Pico_TimerInterrupt.h"      //https://github.com/khoih-prog/RPI_PICO_TimerInterrupt
 
@@ -21,8 +23,8 @@
 #include  "global_timer.h"
 #include  "white_led.h"
 #include  "touch.h"
+#include "touch_ad.h"
 
-//#define UART_MIDI
 /*----------------------------------------------------------------------------*/
 //     Constants
 /*----------------------------------------------------------------------------*/
@@ -65,7 +67,7 @@ uint8_t velocity_byjoy = 100;
 uint8_t damper_byjoy = 0;
 int disp_auto_clear = 0;
 int disp_notch_counter = 0;
-bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
+bool available_each_device[MAX_KAMABOKO_NUM] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
 SwitchEvent swevt[MAX_KAMABOKO_NUM];
 int externalNoteState[MAX_MIDI_NOTE] = {0};
@@ -76,6 +78,7 @@ int neo_pixel_blue = 0;
 
 GlobalTimer gt;
 WhiteLed wled;
+TouchAd touchAd;
 
 /*----------------------------------------------------------------------------*/
 //     setup
@@ -145,6 +148,10 @@ void setup() {
     // success
   }
 
+  // SPI display
+  SSD1331_init();
+  SSD1331_display("Loopian::ORBIT", 0);
+
   // check touch sensor & initialize
   if (normal_mode){check_for_normal_mode();}
   else {check_and_setup_board();}
@@ -156,6 +163,7 @@ void setup() {
 
   //  White LED
   wled.clear_all();
+  touchAd.set_device_number();
   gpio_put(LED1, LOW);
   gpio_put(PIN_WHITELED_EN, HIGH);  //  All White LED available
 }
@@ -184,7 +192,7 @@ void check_for_normal_mode(void) {
     for (int i=0; i<3; i++){
       ada88_write(23); // Er
       delay(500);
-      ada88_write_org_bit(available_each_device); // どのKAMABOKOがOKか？
+      ada88_write_org_bit(available_each_device, MAX_KAMABOKO_NUM); // どのKAMABOKOがOKか？
       delay(500);
     }
   } else {
@@ -291,6 +299,8 @@ int setup_mbr(size_t num) {
     }
     return v;
 }
+
+
 /*----------------------------------------------------------------------------*/
 //     loop
 /*----------------------------------------------------------------------------*/
@@ -351,6 +361,8 @@ void loop() {
     else {neo_pixel_blue = 0;}
     if (errNum) {neo_pixel_red = 255;}
     else {neo_pixel_red = 0;}
+
+    ad_test();
   }
 
   //  update touch location
@@ -365,10 +377,10 @@ void loop() {
   wled.lighten_led();
 
   // Display position
-  display_88matrix();
+  //display_88matrix();
 
   // Read Joystick
-  joy_stick();
+  //joy_stick();
 
   //  Display Full Color LED
   pixels.setPixelColor(0, pixels.Color(neo_pixel_red, neo_pixel_green, neo_pixel_blue));
@@ -428,18 +440,16 @@ void display_auto_clear(void) {
   }
 }
 /*----------------------------------------------------------------------------*/
-#if 0
-void display_88matrix(void) {
-  uint8_t raw_data[2] = {0};
-  int err = mbr3110_read_rawdata( 0, raw_data );
-  if (err == 0) {
-    int position = raw_data[0] + (raw_data[1] << 8);
-    ada88_writeNumber(position/50);
-  } else {
-    ada88_write(25); // --
+EachTouch tch[MAX_TOUCH_EV];
+void ad_test(void) {
+  touchAd.update_touch_event(tch, available_each_device, gt.timer10ms());
+  ada88_writeNumber(tch[2]._position);
+  char disp[10];
+  for (int i=0; i<4; ++i) {
+    SSD1331_display(itoa( tch[i]._position, disp, 10), 2+i);
   }
 }
-#else
+/*----------------------------------------------------------------------------*/
 void display_88matrix(void) {
   // Display auto clear 
   display_auto_clear();
@@ -492,7 +502,6 @@ void display_88matrix(void) {
     }
   }
 }
-#endif
 /*----------------------------------------------------------------------------*/
 void joy_stick(void) {
   uint8_t new_vel = get_velocity_from_adc();

@@ -11,6 +11,8 @@
 #ifndef I2CDEVICE_H
 #define I2CDEVICE_H
 
+#include  "constants.h"
+
 void wireBegin( void );
 void initHardware( void );
 
@@ -25,7 +27,9 @@ void initHardware( void );
   int MBR3110_readTouchSw( unsigned char* touchSw, int number=0 );
   int MBR3110_checkWriteConfig( unsigned char checksumL, unsigned char checksumH, unsigned char crntI2cAdrs );
   int MBR3110_writeConfig( int number, unsigned char crntI2cAdrs );
-  int mbr3110_read_rawdata( unsigned int number, unsigned char (&read_data)[2] );
+  int mbr3110_set_terminal( unsigned int number, unsigned int sw );
+  int mbr3110_read_rawdata( unsigned int number, unsigned int sw, unsigned char (&read_data)[8] );
+
 
 // USE_ADA88
 	void ada88_init( void );
@@ -34,12 +38,21 @@ void initHardware( void );
 	void ada88_writeNumber( int num );
   void ada88_write_5param(uint8_t prm1, uint8_t prm2, uint8_t prm3, uint8_t prm4, uint8_t prm5);
   void ada88_write_bit(uint16_t num);
-  void ada88_write_org_bit(bool* bit);
+  void ada88_write_org_bit(bool (&bit)[MAX_KAMABOKO_NUM], size_t digit);
   void ada88_anime( int time );
 
 // USE_PCA9685
 	void PCA9685_init( uint8_t chipNumber );
   int PCA9685_write( uint8_t chipNumber, uint8_t cmd1, uint8_t cmd2 );
 	int PCA9685_setFullColorLED( uint8_t chipNumber, int ledNum, unsigned short* color  );
+
+
+// USE_AQM1602A
+  void AQM1602A_init(void);
+  void AQM1602A_write(char* str);
+
+// USE_AQM0802A
+  void SSD1331_init(void);
+  void SSD1331_display(const char* str, int line);
 
 #endif
