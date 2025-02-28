@@ -74,7 +74,7 @@ void TouchAd::update_touch_event(EachTouch (&tch)[MAX_TOUCH_EV],
     }
     mbr3110_set_terminal(_kamaboko, _sensor);
 #else
-    int terminal = (time/2)%4;
+    int terminal = (time/5)%4;
     mbr3110_set_terminal(0, terminal);
     unsigned char raw_data[8] = {0};
     int err = mbr3110_read_rawdata(0, terminal, raw_data);
