@@ -41,5 +41,6 @@ constexpr uint8_t PCA9685_OFSADRS = 16;
 #define USE_ADA88
 #define USE_PCA9685
 #define USE_AQM1602A
+#define USE_SSD1331
 
 #endif

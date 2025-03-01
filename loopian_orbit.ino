@@ -13,7 +13,6 @@
 #include <Adafruit_TinyUSB.h>
 #include <MIDI.h>
 #include <Adafruit_NeoPixel.h>
-#include <cstdlib>
 
 // Can be included as many times as necessary, without `Multiple Definitions` Linker Error
 #include "RPi_Pico_TimerInterrupt.h"      //https://github.com/khoih-prog/RPI_PICO_TimerInterrupt
@@ -210,6 +209,25 @@ void check_and_setup_board(void) {
 
   ada88_write(21); // SU
   delay(5000);
+
+  // Check I2C Device
+  {
+    unsigned char adrs[4] = {0};
+    err = check_i2cDevice(adrs);
+    // adrs に入った I2C Address を連続した文字列に変換
+    std::vector<char> disp;
+    for (size_t i=0; i<4; ++i) {
+      if (adrs[i] != 0){
+        char val[3];
+        itoa(adrs[i], val, 16);
+        for (auto c: val) {
+          disp.push_back(c);
+        }
+      }
+    }
+    SSD1331_display(disp.data(), 2);
+  }
+
   while(1) {
       uint16_t adval = get_joystick_position_x();
       int incdec = 0;
@@ -267,6 +285,17 @@ void check_and_setup_board(void) {
       ada88_write(25); // --
   } else {
       ada88_write(23); // Er
+      char disp[10];
+      if (success < 0) {
+        strcpy(disp, "Err=-    ");
+        success = -success;
+        itoa( success, &disp[5], 10); // err<0: CY8CMBR Error
+      }
+      else {
+        strcpy(disp, "Err=+    ");
+        itoa( success, &disp[5], 10);// err>=1: I2C Error
+      }
+      SSD1331_display(disp, 3);
       gpio_put(LED_ERR, HIGH); // Err LED on
   }
 

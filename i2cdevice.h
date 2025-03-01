@@ -14,7 +14,8 @@
 #include  "constants.h"
 
 void wireBegin( void );
-void initHardware( void );
+//void initHardware( void );
+int check_i2cDevice(unsigned char* adrs);
 
 // USE_CY8CMBR3110
   void MBR3110_resetAll(int maxdevNum);
