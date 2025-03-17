@@ -26,10 +26,10 @@ int   i2cErrCode;
 //---------------------------------------------------------
 void wireBegin( void )
 {
-  Wire.setClock(400000);
-  Wire.setSDA(6);
-  Wire.setSCL(7);
-	Wire.begin();
+  Wire1.setClock(400000);
+  Wire1.setSDA(6);
+  Wire1.setSCL(7);
+	Wire1.begin();
 }
 //---------------------------------------------------------
 //		Write I2C Device
@@ -42,9 +42,9 @@ void wireBegin( void )
 //---------------------------------------------------------
 int write_i2cDevice( unsigned char adrs, unsigned char* buf, int count )
 {
-	Wire.beginTransmission(adrs);
-  Wire.write(buf,count);
-	return Wire.endTransmission();
+	Wire1.beginTransmission(adrs);
+  Wire1.write(buf,count);
+	return Wire1.endTransmission();
 }
 //---------------------------------------------------------
 //		Read 1byte I2C Device
@@ -53,17 +53,17 @@ int read1byte_i2cDevice( unsigned char adrs, unsigned char* wrBuf, unsigned char
 {
 	unsigned char err;
 
-	Wire.beginTransmission(adrs);
-  Wire.write(wrBuf,wrCount);
-	err = Wire.endTransmission(false);
+	Wire1.beginTransmission(adrs);
+  Wire1.write(wrBuf,wrCount);
+	err = Wire1.endTransmission(false);
 	if ( err != 0 ){ return err; }
 
-	err = Wire.requestFrom(adrs,(uint8_t)1,(uint8_t)0);
-	while(Wire.available()) {
-		*rdBuf = Wire.read();
+	err = Wire1.requestFrom(adrs,(uint8_t)1,(uint8_t)0);
+	while(Wire1.available()) {
+		*rdBuf = Wire1.read();
 	}
 
-	//err = Wire.endTransmission(true);
+	//err = Wire1.endTransmission(true);
 	//return err;
   return 0;
 }
@@ -81,18 +81,18 @@ int read_nbyte_i2cDevice( unsigned char adrs, unsigned char* wrBuf, unsigned cha
 {
 	unsigned char err;
 
-	Wire.beginTransmission(adrs);
-  Wire.write(wrBuf,wrCount);
-	err = Wire.endTransmission(false);
+	Wire1.beginTransmission(adrs);
+  Wire1.write(wrBuf,wrCount);
+	err = Wire1.endTransmission(false);
 	if ( err != 0 ){ return err; }
 
-	err = Wire.requestFrom(adrs,static_cast<uint8_t>(rdCount),(uint8_t)0);
+	err = Wire1.requestFrom(adrs,static_cast<uint8_t>(rdCount),(uint8_t)0);
 	int rdAv = 0;
-	while((rdAv = Wire.available()) != 0) {
-		*(rdBuf+rdCount-rdAv) = Wire.read();
+	while((rdAv = Wire1.available()) != 0) {
+		*(rdBuf+rdCount-rdAv) = Wire1.read();
 	}
 
-	//err = Wire.endTransmission(true);
+	//err = Wire1.endTransmission(true);
 	//return err;
 
 	return 0;
@@ -103,15 +103,15 @@ int read_nbyte_i2cDeviceX( unsigned char adrs, unsigned char* wrBuf, unsigned ch
 	unsigned char err;
   volatile int cnt=0;
 
-	Wire.beginTransmission(adrs);
-  Wire.write(wrBuf,wrCount);
-	err = Wire.endTransmission(false);
+	Wire1.beginTransmission(adrs);
+  Wire1.write(wrBuf,wrCount);
+	err = Wire1.endTransmission(false);
 	if ( err != 0 ){ return err; }
 
-	err = Wire.requestFrom(adrs,static_cast<uint8_t>(rdCount),(uint8_t)0);
+	err = Wire1.requestFrom(adrs,static_cast<uint8_t>(rdCount),(uint8_t)0);
 	int rdAv = 0;
-	while(((rdAv = Wire.available()) != 0) && (cnt < 10)){
-		*(rdBuf+rdCount-rdAv) = Wire.read();
+	while(((rdAv = Wire1.available()) != 0) && (cnt < 10)){
+		*(rdBuf+rdCount-rdAv) = Wire1.read();
     cnt += 1;
 	}
 
@@ -130,14 +130,14 @@ int read_only_nbyte_i2cDevice( unsigned char adrs, unsigned char* rdBuf, int rdC
 {
   unsigned char err;
 
-  err = Wire.requestFrom(adrs,static_cast<uint8_t>(rdCount),static_cast<uint8_t>(false));
-  int rdAv = Wire.available();
+  err = Wire1.requestFrom(adrs,static_cast<uint8_t>(rdCount),static_cast<uint8_t>(false));
+  int rdAv = Wire1.available();
   while( rdAv ) {
-    *(rdBuf+rdCount-rdAv) = Wire.read();
+    *(rdBuf+rdCount-rdAv) = Wire1.read();
     rdAv--;
   }
 
-  err = Wire.endTransmission(true);
+  err = Wire1.endTransmission(true);
   return err;
 }
 
