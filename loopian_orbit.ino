@@ -22,19 +22,12 @@
 #include  "white_led.h"
 #include  "touch.h"
 
-//#define UART_MIDI
 /*----------------------------------------------------------------------------*/
 //     Constants
 /*----------------------------------------------------------------------------*/
-//#define SW1           10
-//#define SW2           11
-//#define SW3           12
-//#define SW4           13
 #define PIN_WHITELED_EN D10 // P11
 #define LED_ERR       20    // no connect
-#define LED1          16    // LED
-#define LED2          17    // LED
-#define LED3          25 // LED
+#define LED1          25    // LED
 #define JOYSTICK_X    26    // P1(A0)
 #define JOYSTICK_Y    27    // P2(A1)
 #define JOYSTICK_SW   D7    // P8
@@ -50,9 +43,6 @@ Adafruit_NeoPixel pixels(1, 12, NEO_GRB + NEO_KHZ800);
 // Create a new instance of the Arduino MIDI Library,
 // and attach usb_midi as the transport.
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
-#ifdef UART_MIDI
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI_UART);
-#endif
 
 // Init RPI_PICO_Timer
 RPI_PICO_Timer ITimer1(1);
@@ -85,22 +75,18 @@ void setup() {
   // GPIO
   pinMode(LED_ERR, OUTPUT);
   pinMode(LED1, OUTPUT);
-  pinMode(LED2, OUTPUT);
-  pinMode(LED3, OUTPUT);
   pinMode(PIN_WHITELED_EN, OUTPUT);
   pinMode(JOYSTICK_SW,INPUT);
 
   gpio_put(PIN_WHITELED_EN, LOW);  //  All White LED disable
   gpio_put(LED_ERR, LOW);
-  gpio_put(LED1, HIGH); // 初期化の間は点灯
-  gpio_put(LED2, HIGH);
-  gpio_put(LED3, HIGH);
+  gpio_put(LED1, LOW); // 初期化の間は点灯
   normal_mode = gpio_get(JOYSTICK_SW);
 
   // USB & MIDI
-#if defined(ARDUINO_ARCH_MBED) && defined(ARDUINO_ARCH_RP2040)
+//#if defined(ARDUINO_ARCH_MBED) && defined(ARDUINO_ARCH_RP2040)
   TinyUSB_Device_Init(0);
-#endif
+//#endif
 
   MIDI.setHandleNoteOn(handleNoteOn);
   MIDI.setHandleNoteOff(handleNoteOff);
@@ -111,14 +97,6 @@ void setup() {
 
   // wait until device mounted
   while( !TinyUSBDevice.mounted() ) delay(1);
-#ifdef UART_MIDI
-  MIDI_UART.setHandleNoteOn(handleNoteOn_UART);
-  MIDI_UART.setHandleNoteOff(handleNoteOff_UART);
-  MIDI_UART.setHandleControlChange(handleControlChange_UART);
-  MIDI_UART.setHandleProgramChange(handleProgramChange_UART);
-  MIDI_UART.begin(MIDI_CHANNEL_OMNI);
-  MIDI_UART.turnThruOff();
-#endif
 
   //  I2C/device settings
   wireBegin();   // Join I2C bus
@@ -156,7 +134,6 @@ void setup() {
 
   //  White LED
   wled.clear_all();
-  gpio_put(LED1, LOW);
   gpio_put(PIN_WHITELED_EN, HIGH);  //  All White LED available
 }
 /*----------------------------------------------------------------------------*/
@@ -301,21 +278,14 @@ void loop() {
   long difftm = generateTimer();
   if ((gt.timer100ms()%10)<5){
     gpio_put(LED1, LOW);
-    gpio_put(LED2, LOW);
-    gpio_put(LED3, LOW);
   }
   else {
     gpio_put(LED1, HIGH);
-    gpio_put(LED2, HIGH);
-    gpio_put(LED3, HIGH);
   }
   //ada88_writeNumber(difftm); // Loop周期の計測（パフォーマンス測定時に使用）
 
   // read any new MIDI messages
   MIDI.read();
-#ifdef UART_MIDI
-  MIDI_UART.read();
-#endif
 
   // mode check
   check_if_play_mode();
@@ -400,7 +370,6 @@ void check_if_play_mode(void) {
       // スイッチが離された時
       if (play_mode){
         // 時間が足りなかったので元に戻す
-        gpio_put(LED2, LOW);
       }
     }
     stk_jsw = jsw;
@@ -409,7 +378,6 @@ void check_if_play_mode(void) {
     long diff = gt.globalTime() - pushed_time;
     if (diff > JSTICK_LONG_HOLD_TIME) {
       play_mode = false;
-      gpio_put(LED2, HIGH);
       setMidiProgramChange(0);
     }
   }
@@ -591,13 +559,7 @@ long generateTimer( void )
 void handleNoteOn(byte channel, byte pitch, byte velocity) { // orbit_main
   if (channel == 16){
     externalNoteState[pitch] = velocity;
-#ifdef UART_MIDI
-    MIDI_UART.sendNoteOn(pitch, velocity, 16); // to orbit_sub
-#endif
   } else if (channel == 15) {
-#ifdef UART_MIDI
-    MIDI_UART.sendNoteOn(pitch, velocity, 15); // to orbit_sub
-#endif
   } else if (channel == 14) {
     externalNoteState[pitch] = velocity;
   }
@@ -605,13 +567,7 @@ void handleNoteOn(byte channel, byte pitch, byte velocity) { // orbit_main
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
   if (channel == 16){
     externalNoteState[pitch] = 0;
-#ifdef UART_MIDI
-    MIDI_UART.sendNoteOff(pitch, velocity, 16); // to orbit_sub
-#endif
   } else if (channel == 15) {
-#ifdef UART_MIDI
-    MIDI_UART.sendNoteOff(pitch, velocity, 15); // to orbit_sub
-#endif
   } else if (channel == 14) {
     externalNoteState[pitch] = 0; 
   }
@@ -620,43 +576,15 @@ void handleProgramChange(byte channel , byte number) {
   //
 }
 /*----------------------------------------------------------------------------*/
-#if defined(UART_MIDI)
-void handleNoteOn_UART(byte channel, byte pitch, byte velocity) {
-  MIDI.sendNoteOn(pitch, velocity, channel);
-}
-void handleNoteOff_UART(byte channel, byte pitch, byte velocity) {
-  MIDI.sendNoteOff(pitch, velocity, channel);
-}
-void handleControlChange_UART(byte channel , byte number , byte value ) {
-  MIDI.sendControlChange(number, value, channel);
-}
-void handleProgramChange_UART(byte channel , byte number) {
-  MIDI.sendProgramChange(number, channel);
-}
-#endif
-/*----------------------------------------------------------------------------*/
 void setMidiNoteOn(uint8_t note, uint8_t vel) {
   MIDI.sendNoteOn(note, vel, 12);
-#ifdef UART_MIDI
-  MIDI_UART.sendNoteOn(note, vel, 13);
-#endif
 }
 void setMidiNoteOff(uint8_t note) {
   MIDI.sendNoteOff(note, 64, 12);
-#ifdef UART_MIDI
-  MIDI_UART.sendNoteOff(note, 64, 13);
-#endif
 }
 void setMidiControlChange(uint8_t controller, uint8_t value) {
   MIDI.sendControlChange(controller, value, 12);
-#ifdef UART_MIDI
-  MIDI_UART.sendControlChange(controller, value, 13);
-#endif
 }
-void setMidiProgramChange(uint8_t pcn)
-{
+void setMidiProgramChange(uint8_t pcn) {
   MIDI.sendProgramChange(pcn, 12);
-#ifdef UART_MIDI
-  MIDI_UART.sendProgramChange(pcn, 13);
-#endif
 }
