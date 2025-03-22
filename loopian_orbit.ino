@@ -50,10 +50,8 @@ RPI_PICO_Timer ITimer1(1);
 bool normal_mode = true;
 bool play_mode = true;  // false: command_mode
 unsigned long seconds_old = 0;
-int holdtime_cnt = 0; // 指を離したときの感度を弱めに（反応を遅めに）にするためのカウンタ
 uint8_t velocity_byjoy = 100;
 uint8_t damper_byjoy = 0;
-int disp_auto_clear = 0;
 int disp_notch_counter = 0;
 bool available_each_device[MAX_KAMABOKO_NUM] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
@@ -298,10 +296,6 @@ void loop() {
   check_if_play_mode();
 
   if (gt.timer10msecEvent() && play_mode){
-    // check active
-    holdtime_cnt += 1;
-    if (holdtime_cnt>=HOLD_TIME){holdtime_cnt=0;}
-
     //  Analyze Sensor Event
     bool light_someone = swevt.update_allsw_event(gt.timer10ms()*10, available_each_device);
     if (light_someone){neo_pixel_green = 255;}
@@ -376,19 +370,6 @@ void check_if_play_mode(void) {
   }
 }
 /*----------------------------------------------------------------------------*/
-void display_auto_clear(void) {
-  if (gt.timer100msecEvent() && play_mode) {
-    disp_notch_counter += 1;
-    if (disp_auto_clear > 0){
-      disp_auto_clear -= 1;
-      if (disp_auto_clear == 0){
-        //ada88_write(0);
-        disp_notch_counter = 0;
-      }
-    }
-  }
-}
-/*----------------------------------------------------------------------------*/
 #if 0
 void display_88matrix(void) {
   uint8_t raw_data[2] = {0};
@@ -402,21 +383,13 @@ void display_88matrix(void) {
 }
 #else
 void display_88matrix(void) {
-  // Display auto clear 
-  display_auto_clear();
-
   const int COMMODE_MAX = 18;
   if (play_mode) {
     // 通常の表示モード
-    int position = tchev[0]._locate_target;
-    if (position >= 0){
-      // Touchされているとき
-      ada88_writeNumber(position/10);
-      disp_auto_clear = 2;
-      disp_notch_counter = 0;
-    } else {
-      ada88_anime(disp_notch_counter/2); // Time per one frame: 200msec
+    if (gt.timer100msecEvent()) {
+      disp_notch_counter += 1;
     }
+    ada88_anime(disp_notch_counter/2); // Time per one frame: 200msec
   } else {
     // Joystick長押しで設定モード
     uint16_t adval = get_joystick_position_x();
@@ -458,15 +431,12 @@ void display_88matrix(void) {
 void joy_stick(void) {
   uint8_t new_vel = get_velocity_from_adc();
   if ((new_vel != velocity_byjoy) && play_mode) {
-    ada88_writeNumber(new_vel);
-    disp_auto_clear = 5;
     velocity_byjoy = new_vel;
   }
+
   uint8_t new_dmp = get_damper_from_adc();
   if ((new_dmp != damper_byjoy) && play_mode) {
-    ada88_writeNumber(new_dmp);
     setMidiControlChange(64, new_dmp);
-    disp_auto_clear = 5;
     damper_byjoy = new_dmp;
   }
 }
