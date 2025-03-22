@@ -443,33 +443,36 @@ void joy_stick(void) {
 /*----------------------------------------------------------------------------*/
 uint8_t get_velocity_from_adc(void) {
     // get_joystick_position_x(): 0-1023 左が値が大きい
-    const uint16_t HUKAN = 64;
-    const uint16_t UP_RESO = ((1023 - HUKAN) - (512 + HUKAN))/27;
-    const uint16_t DOWN_RESO = ((512 - HUKAN) - HUKAN)/100;
-    uint16_t adc = 1023 - get_joystick_position_x();
-    uint8_t ret;
-    if (adc > 512 + HUKAN) {  // bigger
-        ret = (adc - (512 + HUKAN))/UP_RESO + (512 + HUKAN);
-    } else if (adc < 512 - HUKAN) { // smaller
-        ret = (adc - HUKAN)/DOWN_RESO + HUKAN;
+    const int16_t HUKAN = 64;
+    const int16_t CENTER_UPPER_HUKAN = 512 + HUKAN;
+    const int16_t CENTER_LOWER_HUKAN = 512 - HUKAN;
+    int16_t adc = 1023 - static_cast<int16_t>(get_joystick_position_x());
+
+    if (adc > CENTER_UPPER_HUKAN) {  // bigger
+      adc = (adc - CENTER_UPPER_HUKAN)/16 + 100; // 100-128
+    } else if (adc < HUKAN) {
+      adc = 20;
+    } else if (adc < CENTER_LOWER_HUKAN) { // smaller
+      adc = (adc - HUKAN)/4 + 4;  // 20-100
     } else {
-        ret = 100;
+      adc = 100;
     }
-    return ret;
+    if (adc > 127) {adc = 127;}
+    else if (adc < 20) {adc = 20;}
+    //ada88_writeNumber(adc); //for debug
+    return static_cast<uint8_t>(adc);
 }
 /*----------------------------------------------------------------------------*/
 uint8_t get_damper_from_adc(void) {
     // get_joystick_position_y(): 0-1023 左が値が大きい
     uint16_t adc = get_joystick_position_y();
     uint8_t ret;
-    if (adc > 545) {
-        ret = (adc / 3) - 182;
-    } else if (adc < 480) {
+    if (adc < 480) {
         ret = 160 - (adc / 3);
-    } else {
+        if (ret > 127){ret = 127;}
+      } else {
         ret = 0;
     }
-    if (ret > 127){ret=127;}
     return ret;
 }
 /*----------------------------------------------------------------------------*/
