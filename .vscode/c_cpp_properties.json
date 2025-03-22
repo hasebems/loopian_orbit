@@ -4,7 +4,7 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "~/Library/Arduino15/packages/rp2040/hardware/rp2040/3.7.2/**",
+                "/Users/hasebems/Library/Arduino15/packages/rp2040/hardware/rp2040/4.5.0",
                 "~/coding/arduino/libraries/**"
             ],
             "defines": [],

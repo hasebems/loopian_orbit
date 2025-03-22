@@ -111,7 +111,7 @@ void Kamaboco::one_kamaboco(long total_time) {
   // 背景で薄く光っている
   int ptn = (total_time/HAIKEI_SPEED+(4*_kama_crnt_led))%64;
   ptn = ptn<32? ptn:64-ptn;
-  light_led_each(_kama_crnt_led, ptn);
+  light_led_each(_kama_crnt_led, ptn*8);
 
   _kama_crnt_led += 1;
   if (_kama_crnt_led >= MAX_EACH_LIGHT) {
