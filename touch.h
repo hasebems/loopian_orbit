@@ -23,6 +23,12 @@ enum NOTE_TYP {
   TYP_NOTE_OFF,
   TYP_MAX,
 };
+enum TOUCH_STATE {
+  ST_NO_TOUCH,
+  ST_TOUCH,
+  ST_ERROR,
+  ST_MAX,
+};
 /*----------------------------------------------------------------------------*/
 //     Struct
 /*----------------------------------------------------------------------------*/
@@ -30,24 +36,42 @@ constexpr int OFF = 0;
 constexpr int NO_TOUCH = -1;
 constexpr int HOLD_ERROR = -2;
 constexpr int CHATTERING_TIME = 50; //msec
+/*----------------------------------------------------------------------------*/
 class EachSwitch {
 public:
-  int _sw;
-  int _timeWhenOn;
-  EachSwitch(void): _sw(OFF), _timeWhenOn(NO_TOUCH) {}
+  bool _sw; // false:off, true:on
+  //bool _oldSw; // false:off, true:on
+  uint32_t _timeWhenOn; // [msec] 0:off, -1:no touch, -2:error
+                        // 最大　0xffffffff :  49.7日
+  EachSwitch(void): _sw(false), /*_oldSw(false),*/ _timeWhenOn(NO_TOUCH) {}
 };
+/*----------------------------------------------------------------------------*/
 class SwitchEvent {
-  EachSwitch _eachSw[MAX_EACH_SENS];
-  //int      _sw[MAX_EACH_SENS];
-  //int      _timeWhenOn[MAX_EACH_SENS];
-  //uint16_t _oldSwEvent[MAX_EACH_SENS];
-  uint16_t _oldSwEvent;
+  EachSwitch _eachSw[MAX_KAMABOKO_NUM*MAX_EACH_SENS];
 public:
-  SwitchEvent(void): _eachSw(), _oldSwEvent(0) {}
-  int sw(size_t ele) {return _eachSw[ele]._sw;}
-  bool sw_on(size_t ele) {return _eachSw[ele]._timeWhenOn >= 0;}
-  void clear_event(int time, size_t ele);
-  bool update_sw_event(uint8_t sw[2], int time);
+  SwitchEvent(void): _eachSw() {}
+  bool update_allsw_event(uint32_t time, bool (&available_dev)[MAX_KAMABOKO_NUM]);
+
+  TOUCH_STATE sw(size_t num) const {
+    if (_eachSw[num]._timeWhenOn == HOLD_ERROR) {
+      return ST_ERROR;
+    } else if (_eachSw[num]._sw) {
+      return ST_TOUCH;
+    } else {
+      return ST_NO_TOUCH;
+    }
+  }
+  int duration(size_t num, uint32_t time) const {
+    int diff;
+    if (_eachSw[num]._timeWhenOn < 0) {
+      diff = 0;
+    } else {
+      diff = time - _eachSw[num]._timeWhenOn;
+    }
+    return diff;
+  }
+private:
+  bool update_kama_event(uint8_t sw[2], int kama, uint32_t time);
 };
 /*----------------------------------------------------------------------------*/
 struct TouchEvent {
@@ -75,8 +99,8 @@ struct TouchEvent {
   }
 };
 /*----------------------------------------------------------------------------*/
-void extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV]);
-int update_touch_target(SwitchEvent (&se)[MAX_KAMABOKO_NUM]);
+bool extract_finger(TouchEvent (&new_ev)[MAX_TOUCH_EV], SwitchEvent &se);
+int update_touch_target(SwitchEvent &se, bool &sensor_error);
 void interporate_location(long difftm);
 void generate_midi(NOTE_TYP type, int locate, int last_locate);
 #endif

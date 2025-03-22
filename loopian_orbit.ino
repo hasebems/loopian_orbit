@@ -55,9 +55,9 @@ uint8_t velocity_byjoy = 100;
 uint8_t damper_byjoy = 0;
 int disp_auto_clear = 0;
 int disp_notch_counter = 0;
-bool available_each_device[MAX_KAMABOKO_NUM+4] = {false};
+bool available_each_device[MAX_KAMABOKO_NUM] = {false};
 TouchEvent tchev[MAX_TOUCH_EV];
-SwitchEvent swevt[MAX_KAMABOKO_NUM];
+SwitchEvent swevt;
 int externalNoteState[MAX_MIDI_NOTE] = {0};
 int loop_counter = 0;
 int neo_pixel_red = 0;
@@ -295,31 +295,17 @@ void loop() {
     holdtime_cnt += 1;
     if (holdtime_cnt>=HOLD_TIME){holdtime_cnt=0;}
 
-    //  Touch Sensor
-    uint16_t errNum = 0;
-    bool light_someone = false;
-    for (int i=0; i<MAX_KAMABOKO_NUM; ++i){
-      if (available_each_device[i] == true){
-        uint8_t swtmp[2] = {0};
-        int err = MBR3110_readTouchSw(swtmp,i);
-        if (err){
-          errNum += 0x01<<i;
-        }
-        //else {
-          //バグ出し用にメチャメチャに押したイベント生成
-          //uint16_t sw = 0x0003<<(loopCounter%9);
-          //swtmp[1] = static_cast<uint8_t>(sw >> 8);
-          //swtmp[0] = static_cast<uint8_t>(sw & 0xfff0);
-        light_someone |= swevt[i].update_sw_event(swtmp, static_cast<int>(gt.timer10ms())*10);
-        //}
-      }
-    }
+    //  Analyze Sensor Event
+    bool light_someone = swevt.update_allsw_event(gt.timer10ms()*10, available_each_device);
     if (light_someone){neo_pixel_green = 255;}
     else {neo_pixel_green = 0;}
-    int target_num = update_touch_target(swevt);
+
+    //  Touch Event
+    bool err = false;
+    int target_num = update_touch_target(swevt, err);
     if (target_num>1) {neo_pixel_blue = 255;}
     else {neo_pixel_blue = 0;}
-    if (errNum) {neo_pixel_red = 255;}
+    if (err) {neo_pixel_red = 255;}
     else {neo_pixel_red = 0;}
   }
 

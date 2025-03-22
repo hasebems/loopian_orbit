@@ -30,9 +30,9 @@ public:
   uint16_t  gtOld( void ) const { return _gtOld;}
   void      setTimer100ms( uint16_t tm ){ _timer100msec = tm;}
 
-  uint16_t  timer10ms( void ) const { return _timer10msec;}
-  uint16_t  timer100ms( void ) const { return _timer100msec;}
-  uint16_t  timer1s( void ) const { return _timer1sec;}
+  uint32_t  timer10ms( void ) const { return _timer10msec;}
+  uint32_t  timer100ms( void ) const { return _timer100msec;}
+  uint32_t  timer1s( void ) const { return _timer1sec;}
 
   void      clearAllTimerEvent( void ){ _timer10msec_event = _timer100msec_event = _timer1sec_event = false;}
   bool      timer10msecEvent( void ) const { return _timer10msec_event;}
@@ -70,11 +70,11 @@ private:
 
   volatile uint16_t  _globalTime;
   uint16_t  _gtOld;
-  uint16_t  _timer10msec;
+  uint32_t  _timer10msec;   // 最大 4294967295 * 10msec: 497.1日
   uint16_t  _timer10msec_sabun;
-  uint16_t  _timer100msec;
+  uint32_t  _timer100msec;  // 最大 4294967295 * 100msec: 
   uint16_t  _timer100msec_sabun;
-  uint16_t  _timer1sec;
+  uint32_t  _timer1sec;     // 最大 4294967295 * 1sec:
   uint16_t  _timer1sec_sabun;
 };
 #endif
