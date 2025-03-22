@@ -228,7 +228,7 @@ void interporate_location(long difftm)
   }
 }
 void generate_midi(NOTE_TYP type, int locate, int last_locate){
-  constexpr int CHECK_NOTE = 0;
+  constexpr int CHECK_NOTE = 18;
 
   if ((locate >= MAX_KAMABOKO_NUM*MAX_EACH_SENS) ||
     (last_locate >= MAX_KAMABOKO_NUM*MAX_EACH_SENS)){
