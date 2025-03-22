@@ -31,14 +31,14 @@
 #define JOYSTICK_X    26    // P1(A0)
 #define JOYSTICK_Y    27    // P2(A1)
 #define JOYSTICK_SW   D7    // P8
-#define POWER_PIN     11    //NeoPixelの電源
+#define POWER_PIN     23    //NeoPixelの電源
 
 /*----------------------------------------------------------------------------*/
 //     Variables
 /*----------------------------------------------------------------------------*/
 // USB MIDI object
 Adafruit_USBD_MIDI usb_midi;
-Adafruit_NeoPixel pixels(1, 12, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels(1, 22);
 
 // Create a new instance of the Arduino MIDI Library,
 // and attach usb_midi as the transport.
@@ -82,6 +82,14 @@ void setup() {
   gpio_put(LED_ERR, LOW);
   gpio_put(LED1, LOW); // 初期化の間は点灯
   normal_mode = gpio_get(JOYSTICK_SW);
+
+  //Neopixelの電源供給開始
+  pinMode(POWER_PIN, OUTPUT);
+  gpio_put(POWER_PIN, HIGH);
+  pixels.begin();             //NeoPixel制御開始
+  pixels.setBrightness(128);  //NeoPixelの明るさ設定
+  pixels.setPixelColor(0, pixels.Color(255, 255, 255));
+  pixels.show();
 
   // USB & MIDI
 //#if defined(ARDUINO_ARCH_MBED) && defined(ARDUINO_ARCH_RP2040)
@@ -127,14 +135,13 @@ void setup() {
   if (normal_mode){check_for_normal_mode();}
   else {check_and_setup_board();}
 
-  //Neopixelの電源供給開始
-  pinMode(POWER_PIN, OUTPUT);
-  gpio_put(POWER_PIN, HIGH);
-  pixels.begin();             //NeoPixel制御開始
-
   //  White LED
   wled.clear_all();
   gpio_put(PIN_WHITELED_EN, HIGH);  //  All White LED available
+
+  // 消灯
+  pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+  pixels.show();
 }
 /*----------------------------------------------------------------------------*/
 void check_for_normal_mode(void) {
