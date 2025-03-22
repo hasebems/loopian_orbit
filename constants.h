@@ -11,7 +11,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-constexpr int ORBIT_VERSION = 20;
+constexpr int ORBIT_VERSION = 21;
 
 constexpr int MAX_TOUCH_EV = 4;
 constexpr int MAX_KAMABOKO_NUM = 12;
